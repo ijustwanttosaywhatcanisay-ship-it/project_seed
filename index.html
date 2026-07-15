@@ -1,0 +1,2901 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>創穗計劃 (Project Seed) - 地球復育指揮終端</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;800;900&family=Noto+Sans+TC:wght@400;500;700;900&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+  <style>
+    /* 全域環境漸變變數 */
+    :root {
+      /* 大氣背景過渡 - 柔和舒適、低眩光輕量風格 */
+      --sky-glow-dry: #f5ebd2;
+      --sky-glow-green: #d2e4d9;
+      --sky-base-dry: #e8e4dc;
+      --sky-base-green: #daebd9;
+
+      /* 地面過渡 - 稍帶飽和、沉穩柔和的色彩 */
+      --soil-top-dry: #c27a30;
+      --soil-top-green: #419f61;
+      --soil-bottom-dry: #8f4a0b;
+      --soil-bottom-green: #145e31;
+
+      /* 遊戲主題色 */
+      --theme-main: #059669; 
+      --theme-danger: #dc2626;
+      --theme-warning: #d97706;
+    }
+
+    body {
+      margin: 0; 
+      overflow: hidden; 
+      background-color: var(--sky-base-dry);
+      font-family: 'Noto Sans TC', sans-serif;
+      user-select: none;
+    }
+
+    /* 遊戲感字體 */
+    .font-sci-fi { font-family: 'Orbitron', 'Share Tech Mono', sans-serif; }
+    .font-mono-num { font-family: 'Share Tech Mono', monospace; }
+
+    /* ==================================
+       動態背景系統 (山脈、雲層與漸變)
+       ================================== */
+    #bgGradient {
+      position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: -5;
+      background: radial-gradient(circle at 50% 30%, var(--sky-glow-dry) 0%, var(--sky-base-dry) 70%);
+      transition: background 2.5s ease;
+    }
+
+    /* 雲朵動畫 */
+    .cloud { position: absolute; filter: blur(3px); }
+    .anim-cloud-1 { left: -30%; animation: drift 140s linear infinite; }
+    .anim-cloud-2 { left: -40%; animation: drift 190s linear infinite 40s; }
+    .anim-cloud-3 { right: -30%; animation: drift-reverse 160s linear infinite 20s; }
+    @keyframes drift { from { transform: translateX(0); } to { transform: translateX(150vw); } }
+    @keyframes drift-reverse { from { transform: translateX(0); } to { transform: translateX(-150vw); } }
+
+    /* 山脈圖層 - 減輕視覺重量，增加大氣透視感 (距離感) */
+    .mountain-far {
+      fill: #dacbc0; /* 更柔和、融入天空的乾旱色 */
+      opacity: 0.35;
+      transition: fill 2.5s ease;
+    }
+    .mountain-near {
+      fill: #cdb29b; /* 減輕對比的乾旱色 */
+      opacity: 0.55;
+      transition: fill 2.5s ease;
+    }
+    /* 遊戲推進後的綠化過渡 (遙遠的蒼翠感) */
+    body.is-green .mountain-far { fill: #a8d4bd; }
+    body.is-green .mountain-near { fill: #83c29f; }
+
+    /* 背景畫布與過渡 */
+    #bgCanvas { position: fixed; top: 0; left: 0; z-index: -3; pointer-events: none; }
+    
+    /* 掃描線效果 */
+    .scanlines {
+      position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: -2; pointer-events: none;
+      background: linear-gradient(to bottom, rgba(255,255,255,0), rgba(255,255,255,0) 50%, rgba(0,0,0,0.02) 50%, rgba(0,0,0,0.02));
+      background-size: 100% 4px;
+      opacity: 0.35;
+    }
+
+    /* 遊戲面板風格 HUD */
+    .game-panel {
+      background: rgba(243, 240, 233, 0.91);
+      border: 1px solid rgba(5, 150, 105, 0.35);
+      box-shadow: 
+        inset 0 0 20px rgba(255, 255, 255, 0.95),
+        0 8px 30px rgba(0, 0, 0, 0.05);
+      backdrop-filter: blur(12px);
+      position: relative;
+    }
+    .game-panel::before {
+      content: ''; position: absolute; top: 0; left: 0; width: 100%; height: 2px;
+      background: linear-gradient(90deg, transparent, var(--theme-main), transparent);
+      opacity: 0.8;
+    }
+
+    /* 遊戲按鈕風格 */
+    .btn-game {
+      background: linear-gradient(180deg, #faf9f6 0%, #e8e4da 100%);
+      border: 1px solid rgba(5, 150, 105, 0.45);
+      color: #1e293b;
+      text-transform: uppercase;
+      font-family: 'Orbitron', 'Noto Sans TC', sans-serif;
+      letter-spacing: 2px;
+      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+      position: relative;
+      overflow: hidden;
+      clip-path: polygon(8px 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%, 0 8px);
+    }
+    .btn-game:hover {
+      background: rgba(5, 150, 105, 0.12);
+      border-color: #059669;
+      box-shadow: 0 0 18px rgba(5, 150, 105, 0.2);
+      transform: translateY(-2px);
+    }
+    .btn-game:active { transform: translateY(1px); }
+    .btn-game.active-mode {
+      background: rgba(5, 150, 105, 0.2);
+      border-color: #059669;
+      box-shadow: 0 0 25px rgba(5, 150, 105, 0.35);
+      animation: pulse-border 1.5s infinite;
+    }
+    .btn-danger { border-color: rgba(220, 38, 38, 0.5); color: #7f1d1d; }
+    .btn-danger:hover { background: rgba(220, 38, 38, 0.08); border-color: #dc2626; box-shadow: 0 0 18px rgba(220, 38, 38, 0.15); }
+
+    .btn-disabled {
+      opacity: 0.35;
+      cursor: not-allowed !important;
+      border-color: rgba(148, 163, 184, 0.4);
+      color: #94a3b8;
+    }
+
+    @keyframes pulse-border {
+      0% { box-shadow: 0 0 0 0 rgba(5, 150, 105, 0.4); }
+      70% { box-shadow: 0 0 0 10px rgba(5, 150, 105, 0); }
+      100% { box-shadow: 0 0 0 0 rgba(5, 150, 105, 0); }
+    }
+
+    /* 房間視覺與辨識度 */
+    .room-base {
+      position: relative;
+      overflow: hidden;
+      transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+      box-shadow: 
+        inset 0 0 15px rgba(255,255,255,0.7),
+        inset 0 1px 1px rgba(255,255,255,0.4),
+        0 8px 16px rgba(0,0,0,0.05);
+    }
+    .room-base:hover { filter: brightness(1.06); z-index: 10; transform: scale(1.03); }
+    
+    .room-soil   { background: linear-gradient(135deg, #ffedd5, #fed7aa); border-color: #ea580c; color: #7c2d12; } 
+    .room-energy { background: linear-gradient(135deg, #fef9c3, #fef08a); border-color: #b45309; color: #713f12; } 
+    .room-water  { background: linear-gradient(135deg, #e0f2fe, #bae6fd); border-color: #0284c7; color: #0c4a6e; } 
+    .room-eco    { background: linear-gradient(135deg, #dcfce7, #bbf7d0); border-color: #16a34a; color: #14532d; } 
+    .room-research { background: linear-gradient(135deg, #f3e8ff, #e9d5ff); border-color: #7c3aed; color: #581c87; } 
+    .room-living { background: linear-gradient(135deg, #f1f5f9, #cbd5e1); border-color: #475569; color: #1e293b; } 
+    
+    .pattern-overlay { position: absolute; inset: 0; opacity: 0.12; pointer-events: none; }
+    .room-soil .pattern-overlay { background-image: repeating-linear-gradient(45deg, #000 0, #000 3px, transparent 3px, transparent 9px); }
+    .room-energy .pattern-overlay { background-image: repeating-linear-gradient(90deg, #000 0, #000 2px, transparent 2px, transparent 8px); }
+    .room-water .pattern-overlay  { background-image: radial-gradient(circle, #000 2.5px, transparent 3px); background-size: 12px 12px; }
+    .room-eco .pattern-overlay    { background-image: linear-gradient(90deg, #000 1.5px, transparent 1px), linear-gradient(#000 1.5px, transparent 1px); background-size: 14px 14px; }
+    .room-research .pattern-overlay { background-image: repeating-linear-gradient(0deg, #000 1.5px, transparent 1.5px, transparent 6px); }
+
+    @keyframes buildUp { from { transform: translateY(25px) scaleY(0.4); opacity: 0; } to { transform: translateY(0) scaleY(1); opacity: 1; } }
+    .anim-build { animation: buildUp 0.45s cubic-bezier(0.19, 1, 0.22, 1) forwards; transform-origin: bottom; }
+
+    @keyframes roomArrived {
+      0% { box-shadow: inset 0 0px 0px rgba(16, 185, 129, 0); transform: scale(1); }
+      40% { box-shadow: inset 0 0px 25px rgba(16, 185, 129, 0.9); transform: scale(1.04); border-color: #34d399; }
+      100% { box-shadow: inset 0 0px 0px rgba(16, 185, 129, 0); transform: scale(1); }
+    }
+    .anim-arrived { animation: roomArrived 0.5s cubic-bezier(0.2, 0.8, 0.2, 1) forwards; transform-origin: center; z-index: 20; }
+
+    /* 人員全房間穿越走動軌跡 */
+    @keyframes walk-1 { 0%, 5% { transform: translateX(0px) scaleX(1); } 45% { transform: translateX(65px) scaleX(1); } 50% { transform: translateX(65px) scaleX(-1); } 55% { transform: translateX(65px) scaleX(-1); } 95% { transform: translateX(0px) scaleX(-1); } 100% { transform: translateX(0px) scaleX(1); } }
+    @keyframes walk-2 { 0%, 5% { transform: translateX(0px) scaleX(-1); } 45% { transform: translateX(-35px) scaleX(-1); } 50% { transform: translateX(-35px) scaleX(1); } 55% { transform: translateX(-35px) scaleX(1); } 95% { transform: translateX(0px) scaleX(1); } 100% { transform: translateX(0px) scaleX(-1); } }
+    @keyframes walk-3 { 0%, 5% { transform: translateX(0px) scaleX(-1); } 45% { transform: translateX(-60px) scaleX(-1); } 50% { transform: translateX(-60px) scaleX(1); } 55% { transform: translateX(-60px) scaleX(1); } 95% { transform: translateX(0px) scaleX(1); } 100% { transform: translateX(0px) scaleX(-1); } }
+
+    /* 肢體擺動 */
+    .limb-arm-f, .limb-arm-b, .limb-leg-f, .limb-leg-b { transform-box: fill-box; transform-origin: 50% 10%; }
+    @keyframes swing-f { 0%, 100% { transform: rotate(25deg); } 50% { transform: rotate(-25deg); } }
+    @keyframes swing-b { 0%, 100% { transform: rotate(-25deg); } 50% { transform: rotate(25deg); } }
+    @keyframes person-bob { 0%, 100% { transform: translateY(0px); } 50% { transform: translateY(-0.8px); } }
+    .limb-arm-f { animation: swing-f 0.7s ease-in-out infinite; }
+    .limb-arm-b { animation: swing-b 0.7s ease-in-out infinite; }
+    .limb-leg-f { animation: swing-b 0.7s ease-in-out infinite; }
+    .limb-leg-b { animation: swing-f 0.7s ease-in-out infinite; }
+    .anim-bob { animation: person-bob 0.45s ease-in-out infinite; }
+    .anim-walk-1 { animation: walk-1 6s ease-in-out infinite; }
+    .anim-walk-2 { animation: walk-2 7.5s ease-in-out infinite; }
+    .anim-walk-3 { animation: walk-3 5.5s ease-in-out infinite; }
+
+    /* 🗓️ 月份更迭全螢幕提示動畫 */
+    @keyframes monthFlash {
+      0% { opacity: 0; }
+      15% { opacity: 1; }
+      85% { opacity: 1; }
+      100% { opacity: 0; }
+    }
+    @keyframes monthContentScale {
+      0% { transform: scale(0.7) translateY(20px); opacity: 0; filter: blur(10px); }
+      15% { transform: scale(1.05) translateY(0); opacity: 1; filter: blur(0px); }
+      25% { transform: scale(1) translateY(0); opacity: 1; filter: blur(0px); }
+      85% { transform: scale(1) translateY(0); opacity: 1; filter: blur(0px); }
+      100% { transform: scale(1.15) translateY(-20px); opacity: 0; filter: blur(10px); }
+    }
+    @keyframes monthLineSweep {
+      0% { top: 0%; opacity: 0; }
+      15% { opacity: 1; }
+      85% { opacity: 1; }
+      100% { top: 100%; opacity: 0; }
+    }
+    .anim-month-flash { animation: monthFlash 2.8s ease-in-out forwards; }
+    .anim-month-content { animation: monthContentScale 2.8s ease-in-out forwards; }
+    .anim-month-line { animation: monthLineSweep 2.8s linear forwards; }
+
+    /* 地面實體感設計 */
+    #groundLine {
+      position: absolute; top: calc(100% - 45px); left: -6000px; width: 12000px; height: 2000px;
+      background: linear-gradient(to bottom, rgba(217, 119, 6, 0.2) 0px, rgba(255, 255, 255, 0.95) 4px, var(--soil-top-dry) 10px, var(--soil-bottom-dry) 120px, var(--soil-bottom-dry) 100%);
+      border-top: 3px solid #d97706;
+      box-shadow: 0 -8px 30px rgba(0, 0, 0, 0.05);
+      z-index: 5;
+      transition: background 2.5s ease, border-top-color 2.5s ease;
+    }
+    #groundLine::before {
+      content: ''; position: absolute; inset: 0; opacity: 0.15;
+      background-image: repeating-linear-gradient(90deg, transparent 0, transparent 49px, rgba(0,0,0,0.06) 50px);
+    }
+
+    /* 空槽位顯示 */
+    .slot-empty-indicator {
+      border: 2px dashed rgba(15, 23, 42, 0.15);
+      background: rgba(255, 255, 255, 0.5);
+      transition: all 0.25s ease;
+    }
+    .slot-empty-indicator:hover { border-color: rgba(5, 150, 105, 0.5); background: rgba(5, 150, 105, 0.05); }
+
+    /* 自定義滾動條 */
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: rgba(0,0,0,0.03); }
+    ::-webkit-scrollbar-thumb { background: #059669; border-radius: 3px; }
+    .custom-scrollbar::-webkit-scrollbar { height: 12px; width: 6px; }
+    .custom-scrollbar::-webkit-scrollbar-track { background: rgba(0,0,0,0.1); border-radius: 6px; }
+    .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(168, 85, 247, 0.6); border-radius: 6px; }
+
+    /* 遊戲開始畫面特效 */
+    .title-glow { text-shadow: 0 0 15px rgba(5, 150, 105, 0.35), 0 0 35px rgba(5, 150, 105, 0.15); }
+    @keyframes float { 0% { transform: translateY(0px); } 50% { transform: translateY(-12px); } 100% { transform: translateY(0px); } }
+    .animate-float { animation: float 6s ease-in-out infinite; }
+    @keyframes robotFloat { 0% { transform: translateY(0px); } 50% { transform: translateY(-16px); } 100% { transform: translateY(0px); } }
+    .animate-robot { animation: robotFloat 5s ease-in-out infinite; }
+    @keyframes rotateRingClockwise { 0% { transform: rotate(0deg) scaleY(0.3); } 100% { transform: rotate(360deg) scaleY(0.3); } }
+    @keyframes rotateRingCounter { 0% { transform: rotate(360deg) scaleY(0.25); } 100% { transform: rotate(0deg) scaleY(0.25); } }
+    .ring-clockwise { transform-origin: 150px 220px; animation: rotateRingClockwise 9s linear infinite; }
+    .ring-counter { transform-origin: 150px 220px; animation: rotateRingCounter 13s linear infinite; }
+
+    /* 視覺小說 (VN) 專屬特效 */
+    .vn-char { transition: all 0.4s cubic-bezier(0.25, 0.8, 0.25, 1); }
+    .vn-active { transform: scale(1.05); filter: brightness(1) drop-shadow(0 0 20px rgba(255,255,255,0.2)); opacity: 1; z-index: 20; }
+    .vn-inactive { transform: scale(0.95); filter: brightness(0.4) grayscale(0.6); opacity: 0.7; z-index: 10; }
+    @keyframes slideInLeft { from { transform: translateX(-100px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+    @keyframes slideInRight { from { transform: translateX(100px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+    .anim-slide-left { animation: slideInLeft 0.5s ease-out forwards; }
+    .anim-slide-right { animation: slideInRight 0.5s ease-out forwards; }
+    @keyframes textBlink { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }
+    .text-cursor { display: inline-block; width: 8px; height: 16px; background-color: #059669; animation: textBlink 1s infinite; vertical-align: text-bottom; margin-left: 4px; }
+
+    /* AI 對話框 */
+    .speech-bubble { position: relative; background: rgba(255, 255, 255, 0.98); border: 1px solid #059669; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
+    .speech-bubble::after { content: ''; position: absolute; top: 15px; left: -10px; border-width: 5px 10px 5px 0; border-style: solid; border-color: transparent #059669 transparent transparent; }
+    .drag-over { border-color: #34d399 !important; box-shadow: 0 0 15px rgba(52, 211, 153, 0.8) !important; transform: scale(1.05); }
+
+    /* 開始介面背景 */
+    .cyber-grid {
+      position: absolute; bottom: 0; left: 0; width: 100%; height: 40vh;
+      background-image: linear-gradient(rgba(5, 150, 105, 0.08) 1px, transparent 1px), linear-gradient(90deg, rgba(5, 150, 105, 0.08) 1px, transparent 1px);
+      background-size: 40px 40px; transform: perspective(500px) rotateX(60deg); transform-origin: bottom;
+      mask-image: linear-gradient(to top, rgba(0,0,0,1), rgba(0,0,0,0)); pointer-events: none; z-index: 1;
+    }
+    .bg-planet {
+      position: absolute; top: -10%; right: -5%; width: 45vw; height: 45vw; border-radius: 50%;
+      background: radial-gradient(circle at 30% 30%, rgba(217, 119, 6, 0.08) 0%, rgba(255, 255, 255, 0.9) 70%);
+      box-shadow: inset -20px -20px 50px rgba(255, 255, 255, 0.75), inset 20px 25px 60px rgba(5, 150, 105, 0.06), 0 0 60px rgba(5, 150, 105, 0.02);
+      pointer-events: none; z-index: 0;
+    }
+    body.mode-demolish { cursor: crosshair; }
+    body.mode-build { cursor: cell; }
+    body.mode-assign { cursor: alias; }
+    body.mode-fire { cursor: no-drop; }
+    .hidden { display: none !important; }
+
+    /* 🎓 教學系統 Spotlight 特效 */
+    #tutorialSpotlight {
+      position: absolute;
+      border: 3px solid #34d399;
+      border-radius: 12px;
+      box-shadow: 0 0 0 9999px rgba(15, 23, 42, 0.75), inset 0 0 20px rgba(52, 211, 153, 0.4);
+      transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+      pointer-events: none;
+    }
+  </style>
+</head>
+<body class="text-slate-800 text-sm">
+
+  <!-- 背景系統 -->
+  <div id="bgGradient"></div>
+  
+  <!-- 遠景山脈與雲層 -->
+  <div id="sceneryLayer" class="fixed inset-0 pointer-events-none z-[-4] overflow-hidden">
+    <!-- 各層 Parallax Wrappers -->
+    <div id="plxLayer0" class="absolute inset-0 will-change-transform transform-gpu">
+      <!-- 雲層 -->
+      <svg class="cloud anim-cloud-1" viewBox="0 0 100 50" style="top: 15%; width: 25vw; opacity: 0.4;">
+        <path d="M 25 35 A 15 15 0 0 1 40 20 A 20 20 0 0 1 70 25 A 15 15 0 0 1 85 40 Z" fill="#ffffff"/>
+        <path d="M 20 40 A 10 10 0 0 1 35 30 A 15 15 0 0 1 60 30 A 12 12 0 0 1 80 40 Z" fill="#ffffff" opacity="0.7"/>
+      </svg>
+      <svg class="cloud anim-cloud-2" viewBox="0 0 100 50" style="top: 25%; width: 35vw; opacity: 0.3;">
+        <path d="M 25 35 A 15 15 0 0 1 40 20 A 20 20 0 0 1 70 25 A 15 15 0 0 1 85 40 Z" fill="#ffffff"/>
+      </svg>
+      <svg class="cloud anim-cloud-3" viewBox="0 0 100 50" style="top: 8%; width: 20vw; opacity: 0.5;">
+        <path d="M 20 40 A 10 10 0 0 1 35 30 A 15 15 0 0 1 60 30 A 12 12 0 0 1 80 40 Z" fill="#ffffff"/>
+      </svg>
+    </div>
+  </div>
+
+  <canvas id="bgCanvas"></canvas>
+  <div class="scanlines"></div>
+
+  <!-- 開始介面 -->
+  <div id="startScreen" class="fixed inset-0 z-50 flex items-center justify-between bg-gradient-to-br from-[#f5ebd2] via-[#e8e4dc] to-[#cbd5e1] px-12 py-8 select-none overflow-hidden">
+    <div class="bg-planet"></div>
+    <div class="cyber-grid"></div>
+
+    <div class="w-1/3 h-full flex flex-col items-center justify-center z-10 animate-robot relative">
+      <svg viewBox="0 0 300 440" class="w-full max-h-[80vh] drop-shadow-[0_8px_30px_rgba(0,0,0,0.05)]">
+        <defs>
+          <linearGradient id="chassisGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stop-color="#ffffff" />
+            <stop offset="30%" stop-color="#f8fafc" />
+            <stop offset="70%" stop-color="#f1f5f9" />
+            <stop offset="100%" stop-color="#cbd5e1" />
+          </linearGradient>
+          <linearGradient id="darkMetal" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stop-color="#475569" />
+            <stop offset="50%" stop-color="#1e293b" />
+            <stop offset="100%" stop-color="#0f172a" />
+          </linearGradient>
+          <linearGradient id="glowAqua" x1="0%" y1="0%" x2="0%" y2="100%">
+            <stop offset="0%" stop-color="#34d399" />
+            <stop offset="100%" stop-color="#059669" stop-opacity="0" />
+          </linearGradient>
+          <linearGradient id="neonEmerald" x1="0%" y1="0%" x2="100%" y2="0%">
+            <stop offset="0%" stop-color="#34d399" />
+            <stop offset="50%" stop-color="#059669" />
+            <stop offset="100%" stop-color="#34d399" />
+          </linearGradient>
+          <radialGradient id="cheekBlush" cx="50%" cy="50%" r="50%">
+            <stop offset="0%" stop-color="#ef4444" stop-opacity="0.6"/>
+            <stop offset="100%" stop-color="#ef4444" stop-opacity="0"/>
+          </radialGradient>
+          <filter id="ultraNeon">
+            <feGaussianBlur stdDeviation="5" result="coloredBlur"/>
+            <feMerge>
+              <feMergeNode in="coloredBlur"/>
+              <feMergeNode in="coloredBlur"/>
+              <feMergeNode in="SourceGraphic"/>
+            </feMerge>
+          </filter>
+          <filter id="subtleGlow">
+            <feGaussianBlur stdDeviation="2" result="blur"/>
+            <feMerge>
+              <feMergeNode in="blur"/>
+              <feMergeNode in="SourceGraphic"/>
+            </feMerge>
+          </filter>
+        </defs>
+
+        <g class="ring-clockwise" opacity="0.45">
+          <ellipse cx="150" cy="220" rx="135" ry="135" fill="none" stroke="#34d399" stroke-width="2.5" stroke-dasharray="12 25 50 15" filter="url(#ultraNeon)"/>
+          <circle cx="285" cy="220" r="5" fill="#a7f3d0" filter="url(#ultraNeon)"/>
+        </g>
+        <g class="ring-counter" opacity="0.35">
+          <ellipse cx="150" cy="220" rx="110" ry="110" fill="none" stroke="#60a5fa" stroke-width="1.5" stroke-dasharray="8 15 25 8" filter="url(#ultraNeon)"/>
+          <circle cx="40" cy="220" r="4" fill="#93c5fd" filter="url(#ultraNeon)"/>
+        </g>
+
+        <g opacity="0.85">
+          <ellipse cx="150" cy="335" rx="40" ry="12" fill="none" stroke="#10b981" stroke-width="3" filter="url(#ultraNeon)" />
+          <ellipse cx="150" cy="335" rx="20" ry="6" fill="#34d399" filter="url(#subtleGlow)" />
+          <path d="M 125 285 Q 150 365 175 285" fill="url(#glowAqua)" opacity="0.6" filter="url(#ultraNeon)" />
+        </g>
+
+        <rect x="100" y="180" width="100" height="110" rx="50" fill="url(#chassisGrad)" stroke="#cbd5e1" stroke-width="3.5" />
+        <circle cx="150" cy="235" r="28" fill="rgba(8, 20, 15, 0.92)" stroke="url(#neonEmerald)" stroke-width="2.5" filter="url(#subtleGlow)" />
+        <path d="M 150 255 Q 148 225 152 218" fill="none" stroke="#10b981" stroke-width="3.5" stroke-linecap="round" />
+        <path d="M 152 218 Q 162 212 165 218 Q 158 224 152 218" fill="#34d399" />
+        <path d="M 150 230 Q 140 226 137 232 Q 144 236 150 230" fill="#34d399" />
+
+        <g class="floating-paws">
+          <circle cx="78" cy="230" r="10" fill="url(#chassisGrad)" stroke="#cbd5e1" stroke-width="2" />
+          <circle cx="78" cy="230" r="4" fill="#34d399" filter="url(#subtleGlow)" />
+          <circle cx="222" cy="230" r="10" fill="url(#chassisGrad)" stroke="#cbd5e1" stroke-width="2" />
+          <circle cx="222" cy="230" r="4" fill="#34d399" filter="url(#subtleGlow)" />
+        </g>
+
+        <rect x="75" y="80" width="150" height="115" rx="58" fill="url(#chassisGrad)" stroke="#cbd5e1" stroke-width="3.5" />
+        <rect x="85" y="90" width="130" height="92" rx="46" fill="#080c14" stroke="#475569" stroke-width="2" />
+        
+        <circle cx="120" cy="132" r="15" fill="#064e3b" />
+        <circle cx="120" cy="132" r="11" fill="#10b981" filter="url(#subtleGlow)" />
+        <circle cx="120" cy="132" r="8" fill="#34d399" filter="url(#ultraNeon)" />
+        <circle cx="116" cy="127" r="3.5" fill="#ffffff" />
+        <circle cx="124" cy="137" r="1.5" fill="#ffffff" />
+        
+        <circle cx="180" cy="132" r="15" fill="#064e3b" />
+        <circle cx="180" cy="132" r="11" fill="#10b981" filter="url(#subtleGlow)" />
+        <circle cx="180" cy="132" r="8" fill="#34d399" filter="url(#ultraNeon)" />
+        <circle cx="176" cy="127" r="3.5" fill="#ffffff" />
+        <circle cx="184" cy="137" r="1.5" fill="#ffffff" />
+
+        <circle cx="100" cy="148" r="7" fill="url(#cheekBlush)" />
+        <circle cx="200" cy="148" r="7" fill="url(#cheekBlush)" />
+        <path d="M 144 148 Q 150 155 156 148" fill="none" stroke="#34d399" stroke-width="3" stroke-linecap="round" filter="url(#subtleGlow)" />
+
+        <path d="M 95 88 Q 78 65 92 65 Z" fill="url(#chassisGrad)" stroke="#cbd5e1" stroke-width="2" />
+        <path d="M 93 85 Q 82 70 91 70 Z" fill="#34d399" />
+        <path d="M 205 88 Q 222 65 208 65 Z" fill="url(#chassisGrad)" stroke="#cbd5e1" stroke-width="2" />
+        <path d="M 207 85 Q 218 70 209 70 Z" fill="#34d399" />
+
+        <path d="M 150 80 Q 150 48 152 45" fill="none" stroke="#475569" stroke-width="3.5" stroke-linecap="round" />
+        <path d="M 152 45 Q 138 35 142 42 Z" fill="#34d399" stroke="#059669" stroke-width="1" filter="url(#subtleGlow)" />
+        <path d="M 152 45 Q 166 35 162 42 Z" fill="#34d399" stroke="#059669" stroke-width="1" filter="url(#subtleGlow)" />
+        <circle cx="152" cy="42" r="3.5" fill="#f59e0b" filter="url(#ultraNeon)" />
+      </svg>
+      <div class="mt-2 bg-white/80 border border-green-500/25 px-4 py-1.5 rounded font-mono-num text-xs text-green-700 flex items-center gap-2 shadow-sm">
+        <span class="w-2 h-2 bg-green-500 rounded-full animate-ping"></span>
+        <span>SEED-01: 生態自檢與導航協定安全</span>
+      </div>
+    </div>
+
+    <!-- 中間與右側：任務簡報與主控制菜單 -->
+    <div class="w-3/5 h-full flex flex-col justify-center px-6 z-10 text-slate-800">
+      <div class="text-left mb-6 relative">
+        <div class="absolute -inset-x-12 -inset-y-6 bg-green-500/5 blur-[80px] rounded-full pointer-events-none"></div>
+        <h2 class="font-sci-fi text-green-700 text-sm tracking-[0.4em] mb-2 drop-shadow-[0_0_10px_rgba(5,150,105,0.2)]">PROJECT SEED</h2>
+        <div class="relative py-2">
+          <h1 class="font-sci-fi text-5xl md:text-6xl font-black text-slate-900 title-glow tracking-[0.12em] font-bold select-none">創穗計劃</h1>
+          <div class="w-full h-[2px] bg-gradient-to-r from-green-400 via-green-500 to-transparent mt-2 opacity-80"></div>
+        </div>
+      </div>
+      <div class="game-panel p-5 rounded border border-yellow-600/30 bg-white/95 mb-6 text-left max-w-xl shadow-sm">
+        <div class="text-xs text-red-700 font-bold uppercase tracking-widest mb-3 border-b border-red-600/20 pb-1 flex justify-between">
+          <span>📡 警告：全球危機與歷史繼承簡報</span>
+          <span class="font-mono-num text-slate-500">CRITICAL PROTOCOL</span>
+        </div>
+        <p class="text-slate-700 text-xs leading-relaxed mb-3">
+          公元2077年，地球大氣層遭受不可逆破壞，全球地表沙漠化高達98%，人類面臨史無前例的生存絕境與飢荒危機。在這生死存亡的倒數時刻，為了挽救同胞與我們的蔚藍家園，您必須繼承「雜交水稻之父」袁隆平院士的科學奮鬥精神。您作為「創穗計劃」的總指揮 <strong>「Boss」</strong>，將帶領您的科研團隊在絕境中尋找奇蹟。
+        </p>
+        <p class="text-green-700 text-xs leading-relaxed font-medium">
+          <strong>【極限任務】</strong>：地下避難所的物資僅能維持最後 <strong>15 個月</strong>！您必須擴建龐大的科研設施，獲取 4 種關鍵資源。帶領團隊深入全息科技樹，解鎖終極科技節點 <span class="font-bold text-green-800">「終極三系配套」</span>，這是拯救地球溫飽危機的唯一希望！
+        </p>
+      </div>
+      <div class="flex space-x-4 w-full max-w-md">
+        <button id="btnStart" class="btn-game flex-1 py-3 text-lg font-bold rounded-sm shadow-[0_4px_15px_rgba(5,150,105,0.12)]">開始緊急救援</button>
+        <button id="btnSettings" class="btn-game px-6 py-3 text-lg font-bold rounded-sm">系統設定</button>
+        <button id="btnExit" class="btn-game btn-danger px-6 py-3 text-lg font-bold rounded-sm">放棄任務</button>
+      </div>
+      <div class="mt-8 text-slate-500 font-mono-num text-[11px] tracking-wider text-left font-medium">
+        地球聯邦復育署特派指令科 - 首席指揮控制台 v6.1.0 ONLINE
+      </div>
+    </div>
+  </div>
+
+  <!-- 🎓 遊戲引導教學系統 -->
+  <div id="tutorialOverlay" class="fixed inset-0 z-[150] hidden pointer-events-auto" onclick="advanceTutorial()">
+    <div id="tutorialSpotlight"></div>
+    
+    <div id="tutorialDialog" class="absolute left-1/2 transform -translate-x-1/2 w-[400px] bg-slate-900/95 border-2 border-emerald-500 rounded-2xl p-6 shadow-[0_10px_40px_rgba(0,0,0,0.8)] transition-all duration-500 ease-in-out flex flex-col gap-4">
+      <div class="flex items-start gap-4">
+        <div class="w-16 h-16 shrink-0 bg-emerald-950 rounded-full border border-emerald-500/50 flex items-center justify-center shadow-[0_0_15px_rgba(16,185,129,0.3)]">
+          <span class="text-3xl">🤖</span>
+        </div>
+        <div class="flex-1">
+          <h4 class="text-emerald-400 font-bold tracking-widest text-sm mb-2 border-b border-emerald-800/50 pb-1">SEED-01 指南</h4>
+          <p id="tutorialText" class="text-slate-100 text-sm leading-relaxed tracking-wide font-medium"></p>
+        </div>
+      </div>
+      <div class="text-right text-[10px] text-emerald-500 font-bold animate-pulse tracking-widest uppercase mt-2">
+        Click anywhere to continue ▶
+      </div>
+    </div>
+  </div>
+
+  <!-- 視覺小說 (VN) 互動對話系統 -->
+  <div id="vnOverlay" class="fixed inset-0 z-[100] flex flex-col justify-end bg-slate-950/80 backdrop-blur-sm hidden" onclick="advanceVnDialogue()">
+    <div class="flex-1 w-full max-w-6xl mx-auto flex justify-between items-end px-10 relative overflow-hidden pointer-events-none">
+      <div id="vnCharLeft" class="w-64 md:w-80 h-[50vh] flex items-end justify-center pb-4 vn-char anim-slide-left">
+        <svg viewBox="0 0 300 440" class="w-full h-full drop-shadow-2xl">
+          <defs>
+            <linearGradient id="chassisGradVn" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#ffffff" /><stop offset="100%" stop-color="#cbd5e1" /></linearGradient>
+          </defs>
+          <rect x="100" y="180" width="100" height="110" rx="50" fill="url(#chassisGradVn)" stroke="#cbd5e1" stroke-width="3.5" />
+          <circle cx="150" cy="235" r="28" fill="rgba(8, 20, 15, 0.92)" stroke="#34d399" stroke-width="2.5" />
+          <path d="M 152 218 Q 162 212 165 218 Q 158 224 152 218" fill="#34d399" />
+          <rect x="75" y="80" width="150" height="115" rx="58" fill="url(#chassisGradVn)" stroke="#cbd5e1" stroke-width="3.5" />
+          <rect x="85" y="90" width="130" height="92" rx="46" fill="#080c14" stroke="#475569" stroke-width="2" />
+          <circle cx="120" cy="132" r="13" fill="#10b981" /><circle cx="116" cy="127" r="4" fill="#ffffff" />
+          <circle cx="180" cy="132" r="13" fill="#10b981" /><circle cx="176" cy="127" r="4" fill="#ffffff" />
+        </svg>
+      </div>
+      <div id="vnCharRight" class="w-64 md:w-80 h-[60vh] flex items-end justify-center vn-char anim-slide-right">
+        <svg viewBox="0 0 200 300" class="w-full h-full drop-shadow-[0_10px_25px_rgba(0,0,0,0.6)]">
+          <path d="M40,300 L40,210 C40,160 160,160 160,210 L160,300 Z" fill="#1e293b" stroke="#334155" stroke-width="2"/>
+          <path d="M80,210 L100,240 L120,210 Z" fill="#0f172a"/>
+          <circle cx="100" cy="100" r="45" fill="#334155" stroke="#475569" stroke-width="2"/>
+          <path d="M55,95 Q100,125 145,95 L150,115 Q100,150 50,115 Z" fill="#38bdf8" opacity="0.9"/>
+          <rect x="45" y="90" width="10" height="30" rx="5" fill="#94a3b8"/>
+          <circle cx="45" cy="105" r="3" fill="#38bdf8"/>
+        </svg>
+      </div>
+    </div>
+    <div class="w-full pb-8 pt-4 px-4 flex justify-center pointer-events-auto">
+      <div class="w-full max-w-5xl relative">
+        <div id="vnNameBox" class="absolute -top-6 left-6 px-6 py-1.5 font-bold text-white text-lg rounded-t-lg border-t-2 border-l-2 border-r-2 tracking-widest z-10 shadow-[0_-5px_15px_rgba(0,0,0,0.3)] transition-colors duration-300">NAME</div>
+        <div id="vnTextBoxBorder" class="bg-slate-900/95 border-2 rounded-xl rounded-tl-none p-6 md:p-8 min-h-[160px] shadow-[0_10px_30px_rgba(0,0,0,0.5)] relative overflow-hidden transition-colors duration-300">
+           <div class="absolute inset-0 opacity-10 bg-[linear-gradient(rgba(255,255,255,0.1)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.1)_1px,transparent_1px)] bg-[size:20px_20px] pointer-events-none"></div>
+           <p id="vnTextContent" class="text-slate-100 text-lg md:text-xl leading-relaxed tracking-wide font-medium relative z-10"></p>
+           <div class="absolute bottom-4 right-6 text-sm text-slate-400 font-sci-fi animate-pulse pointer-events-none">CLICK TO CONTINUE ▶</div>
+        </div>
+      </div>
+    </div>
+    <button onclick="skipVnStory(event)" class="absolute top-6 right-6 px-4 py-2 bg-slate-800/80 hover:bg-slate-700 text-slate-300 text-xs rounded border border-slate-600 tracking-widest z-50">SKIP 略過</button>
+  </div>
+
+  <!-- 系統設定彈窗 -->
+  <div id="modalSettings" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/35 backdrop-blur-md hidden">
+    <div class="game-panel p-8 rounded-lg max-w-md w-full border border-green-500/40 text-left">
+      <h3 class="font-sci-fi text-2xl font-bold text-green-700 mb-6 border-b border-green-500/30 pb-2 flex items-center justify-between">
+        <span>⚙️ 系統設定</span>
+        <button onclick="toggleSettingsModal(false)" class="text-sm text-slate-500 hover:text-slate-800">[ 關閉 ]</button>
+      </h3>
+      <div class="space-y-6 text-slate-700">
+        <div>
+          <label class="block text-slate-600 text-sm mb-2">背景環境動態密度</label>
+          <input type="range" id="particleRange" min="10" max="150" value="60" class="w-full accent-green-700 bg-slate-200 rounded h-1.5">
+        </div>
+      </div>
+      <div class="mt-8 flex justify-end">
+        <button onclick="toggleSettingsModal(false)" class="btn-game px-6 py-2 rounded text-sm">確認變更</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 🛑 放棄任務彈窗 (新增修復) -->
+  <div id="modalExit" class="fixed inset-0 z-[120] flex items-center justify-center bg-slate-950/80 backdrop-blur-sm hidden pointer-events-auto">
+    <div class="game-panel p-8 rounded-3xl max-w-sm w-full border-2 border-red-500 shadow-2xl text-center bg-white/95">
+      <div class="flex flex-col items-center gap-3 mb-4">
+        <span class="text-5xl">⚠️</span>
+        <h3 class="text-xl font-black text-red-700 orbitron tracking-wider">放棄任務？</h3>
+        <p class="text-xs text-slate-500 font-bold uppercase tracking-widest">ABORT MISSION</p>
+      </div>
+      
+      <div class="bg-red-50/50 p-5 rounded-2xl border border-red-200 mb-6 text-left space-y-3 shadow-inner">
+        <p class="text-base text-slate-800 font-black leading-relaxed text-center">
+          指揮官，同胞們正在受苦，地球的生態正處於崩潰邊緣。
+        </p>
+        <div class="w-full h-[1px] bg-red-200"></div>
+        <p class="text-xs text-red-600 font-bold leading-relaxed text-center">
+          「人就像一粒種子，要做一粒好種子。」
+          <br><br>我們不能在這裡倒下！請重拾信心，繼續這份偉大的事業！
+        </p>
+      </div>
+
+      <div class="flex flex-col gap-3">
+        <button onclick="toggleExitModal(false)" class="w-full py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-black rounded-xl transition-all shadow-md active:translate-y-0.5 tracking-widest text-sm">
+          返回崗位，繼續救援！
+        </button>
+        <button onclick="confirmExit()" class="w-full py-2 bg-slate-100 hover:bg-slate-200 text-slate-600 font-black rounded-xl transition-all border border-slate-300 shadow-sm active:translate-y-0.5 tracking-widest text-xs">
+          強行終止系統
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 🏠 回主選單二次確認彈窗 -->
+  <div id="modalHomeConfirm" class="fixed inset-0 z-[120] items-center justify-center bg-slate-950/80 backdrop-blur-sm hidden pointer-events-auto">
+    <div class="game-panel p-8 rounded-3xl max-w-sm w-full border-2 border-red-500 shadow-2xl text-center bg-white/95">
+      <div class="flex flex-col items-center gap-3 mb-4">
+        <span class="text-5xl">⚠️</span>
+        <h3 id="homeConfirmTitle" class="text-xl font-black text-red-700 orbitron tracking-wider">離開確認</h3>
+        <p class="text-xs text-slate-500 font-bold uppercase tracking-widest">RETURN TO LOBBY</p>
+      </div>
+      
+      <div class="bg-red-50/50 p-5 rounded-2xl border border-red-200 mb-6 text-left space-y-3 shadow-inner">
+        <p id="homeConfirmMessage" class="text-base text-slate-800 font-black leading-relaxed text-center">
+          這樣會不會儲存你的進度，確定要離開嗎？
+        </p>
+        <div class="w-full h-[1px] bg-red-200"></div>
+        <p class="text-xs text-red-600 font-bold leading-relaxed text-center animate-pulse">
+          ⚠️ 警告：離開將不會儲存當前所有的科研進度！
+        </p>
+      </div>
+
+      <div class="flex flex-col gap-3">
+        <button onclick="window.handleHomeConfirmNext()" class="w-full py-3 bg-red-600 hover:bg-red-500 text-white font-black rounded-xl transition-all shadow-md active:translate-y-0.5 tracking-widest text-sm">
+          確定離開
+        </button>
+        <button onclick="window.closeHomeConfirm()" class="w-full py-2 bg-slate-100 hover:bg-slate-200 text-slate-600 font-black rounded-xl transition-all border border-slate-300 shadow-sm active:translate-y-0.5 tracking-widest text-xs">
+          esc (取消)
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 🚀 全新樹狀科技研發系統 (全螢幕、拖曳、縮放與樹狀拓撲) -->
+  <div id="modalResearch" class="fixed inset-0 z-[60] bg-slate-50 hidden flex-col pointer-events-auto">
+    <!-- Header -->
+    <div class="p-6 pb-4 border-b border-slate-200 shrink-0 bg-white z-20 flex justify-between items-center shadow-sm relative">
+      <div class="flex items-center gap-4">
+        <div class="w-12 h-12 rounded-xl bg-purple-100 border border-purple-300 flex items-center justify-center text-2xl shadow-sm">
+           🔬
+        </div>
+        <div>
+          <h3 class="font-sci-fi text-2xl font-bold text-purple-700 tracking-widest">
+            全息科技樹系統
+          </h3>
+          <div class="text-xs text-slate-500 mt-1 uppercase tracking-wider font-semibold">
+            收集資源，點亮科研節點，邁向最終勝利目標！<span class="text-amber-600 font-bold ml-2">(支援滑鼠滾輪縮放與拖曳移動)</span>
+          </div>
+        </div>
+      </div>
+      <button onclick="toggleResearchModal(false)" class="text-slate-400 hover:text-slate-700 text-4xl leading-none px-4 py-1 rounded-xl hover:bg-slate-200 transition-colors">&times;</button>
+    </div>
+
+    <!-- Scrollable Content - Full Screen Interactive Tech Tree -->
+    <div class="flex-1 relative overflow-hidden cursor-grab active:cursor-grabbing bg-slate-100/50" id="techScrollArea">
+      <!-- 點狀背景圖案 -->
+      <div class="absolute inset-0 opacity-40 pointer-events-none" style="background-image: radial-gradient(circle, #cbd5e1 1.5px, transparent 1.5px); background-size: 24px 24px;"></div>
+      
+      <!-- 畫布與網格容器 -->
+      <div id="techTreeCanvas" class="absolute top-0 left-0 p-24 grid gap-x-24 gap-y-6 w-max" style="grid-template-columns: repeat(9, 320px); grid-template-rows: repeat(5, 140px); transform-origin: top left; will-change: transform;">
+        <!-- SVG 用來繪製節點間的連線 -->
+        <svg id="techTreeLines" class="absolute top-0 left-0 pointer-events-none z-0" style="width: 100%; height: 100%;" xmlns="http://www.w3.org/2000/svg"></svg>
+        <!-- 節點動態載入至此 -->
+      </div>
+    </div>
+
+    <!-- Footer -->
+    <div class="p-5 border-t border-slate-200 shrink-0 bg-white z-20 flex justify-between items-center relative shadow-[0_-5px_15px_rgba(0,0,0,0.03)]">
+      <div class="text-sm text-slate-600 bg-slate-50 px-4 py-2 rounded-lg border border-slate-200 shadow-sm font-bold tracking-widest text-emerald-800 flex items-center gap-4">
+        <span>【當前資源】</span>
+        <span class="text-yellow-600">💰 <span id="modalResFunding">0</span></span>
+        <span class="text-orange-500">🌾 <span id="modalResFood">0</span></span>
+        <span class="text-purple-600">💡 <span id="modalResInspiration">0</span></span>
+        <span class="text-emerald-500">🧬 <span id="modalResGene">0</span></span>
+      </div>
+      <button onclick="toggleResearchModal(false)" class="btn-game px-8 py-3 rounded-xl font-bold tracking-widest text-slate-800 shadow-md">
+        確認並返回
+      </button>
+    </div>
+  </div>
+
+  <!-- 遊戲主介面 -->
+  <div id="gameUI" class="hidden w-full h-screen flex flex-col relative overflow-hidden">
+    
+    <!-- 頂部資訊列 HUD -->
+    <div class="game-panel p-3 m-4 rounded-md flex justify-between items-center z-20">
+      <div class="flex items-center space-x-6">
+        
+        <!-- 🏠 整合進框框內的 Home 按鈕 -->
+        <button id="btnHome" class="w-11 h-11 bg-slate-100 border-2 border-emerald-500/30 rounded-lg shadow-sm hover:bg-slate-200 hover:scale-105 active:scale-95 text-xl flex items-center justify-center transition-all pointer-events-auto" onclick="window.showHomeConfirm(1)" title="回主選單">
+          🏠
+        </button>
+
+        <div id="uiMonthBox" class="bg-white/90 px-4 py-2 rounded border border-green-500/20 flex flex-col items-center min-w-[125px] shadow-sm">
+          <span class="text-xs text-slate-500 uppercase tracking-widest font-sci-fi">Month</span>
+          <span id="gameMonth" class="text-xl font-black font-sci-fi text-green-700">01 / 15</span>
+          <div class="w-24 h-1.5 bg-slate-200 rounded-full mt-1.5 overflow-hidden">
+            <div id="monthProgress" class="h-full bg-green-500 transition-all duration-100" style="width: 0%"></div>
+          </div>
+        </div>
+
+        <div id="uiSpeedControls" class="flex bg-white/90 p-1 rounded border border-slate-250 space-x-1 shadow-sm">
+          <button id="btnSpeed0" class="px-2.5 py-1 text-xs font-bold rounded text-slate-600 hover:bg-slate-100 transition-colors" onclick="setSpeed(0)">⏸️ 暫停</button>
+          <button id="btnSpeed1" class="px-2.5 py-1 text-xs font-bold rounded bg-green-500/15 text-green-800 border border-green-500/25 transition-colors" onclick="setSpeed(1)">▶️ 1x</button>
+          <button id="btnSpeed2" class="px-2.5 py-1 text-xs font-bold rounded text-slate-600 hover:bg-slate-100 transition-colors" onclick="setSpeed(2)">⏩ 2x</button>
+          <button id="btnSpeed5" class="px-2.5 py-1 text-xs font-bold rounded text-purple-600 hover:bg-purple-50 border border-purple-200 hidden transition-all animate-pulse" onclick="setSpeed(5)">⚡ 5x</button>
+        </div>
+      </div>
+      
+      <!-- Top-Right 4 種資源 UI -->
+      <div id="uiResourceBar" class="flex items-center space-x-4">
+        <div class="flex items-center bg-white/95 p-1.5 rounded-lg border border-slate-300 shadow-md">
+          <div class="flex flex-col items-center px-3 border-r border-slate-200 w-24">
+            <div class="flex items-center justify-center gap-1 w-full mb-1">
+              <span class="text-yellow-600 font-bold text-lg drop-shadow-sm">💰</span>
+              <span class="text-slate-500 text-[10px] uppercase font-black tracking-widest">經費</span>
+            </div>
+            <span id="resFunding" class="font-mono-num font-black text-lg text-slate-800 text-center w-full">0</span>
+          </div>
+
+          <div class="flex flex-col items-center px-3 border-r border-slate-200 w-24">
+            <div class="flex items-center justify-center gap-1 w-full mb-1">
+              <span class="text-orange-500 font-bold text-lg drop-shadow-sm">🌾</span>
+              <span class="text-slate-500 text-[10px] uppercase font-black tracking-widest">糧草</span>
+            </div>
+            <span id="resFood" class="font-mono-num font-black text-lg text-slate-800 text-center w-full">0</span>
+          </div>
+
+          <div class="flex flex-col items-center px-3 border-r border-slate-200 w-24">
+            <div class="flex items-center justify-center gap-1 w-full mb-1">
+              <span class="text-purple-600 font-bold text-lg drop-shadow-sm">💡</span>
+              <span class="text-slate-500 text-[10px] uppercase font-black tracking-widest">靈感</span>
+            </div>
+            <span id="resInspiration" class="font-mono-num font-black text-lg text-slate-800 text-center w-full">0</span>
+          </div>
+
+          <div class="flex flex-col items-center px-3 w-24 bg-emerald-50/50 rounded-r-lg">
+            <div class="flex items-center justify-center gap-1 w-full mb-1">
+              <span class="text-emerald-500 font-bold text-lg drop-shadow-sm">🧬</span>
+              <span class="text-emerald-700 text-[10px] uppercase font-black tracking-widest">罕見基因</span>
+            </div>
+            <span id="resGene" class="font-mono-num font-black text-lg text-emerald-800 text-center w-full drop-shadow-sm">0</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 中間主要區域 - 相對定位地圖佔滿全寬 -->
+    <div class="flex-1 relative overflow-hidden z-10">
+      
+      <!-- 左側控制面板 (AI) -->
+      <div class="absolute top-0 left-0 w-80 h-full flex flex-col p-4 z-20 pointer-events-none">
+        <!-- AI 助手 -->
+        <div class="game-panel p-3 rounded-md mb-4 pointer-events-auto flex flex-col gap-2 transition-all duration-300 shadow-sm" id="robotPanel">
+          <div class="flex justify-between items-center border-b border-green-500/15 pb-1.5">
+            <span class="text-xs text-green-700 font-bold font-sci-fi">SEED-01 LINK</span>
+            <button onclick="toggleRobotVisible()" class="text-[10px] text-slate-600 hover:text-slate-800 px-2 py-0.5 bg-slate-200/50 rounded border border-slate-300 transition-all font-bold">收起終端</button>
+          </div>
+          <div class="flex gap-3 items-start" id="robotBodyContainer">
+            <div class="w-14 h-14 flex-shrink-0 animate-float">
+              <svg viewBox="0 0 100 100" class="w-full h-full drop-shadow-[0_4px_10px_rgba(0,0,0,0.05)]">
+                <circle cx="50" cy="50" r="45" fill="rgba(16, 185, 129, 0.05)"/>
+                <path d="M 28 35 Q 16 15 32 23 Z" fill="url(#chassisGrad)" stroke="#cbd5e1" stroke-width="1.5" />
+                <path d="M 72 35 Q 84 15 68 23 Z" fill="url(#chassisGrad)" stroke="#cbd5e1" stroke-width="1.5" />
+                <ellipse cx="50" cy="48" r="32" rx="34" ry="26" fill="url(#chassisGrad)" stroke="#cbd5e1" stroke-width="2" />
+                <ellipse cx="50" cy="49" r="28" rx="30" ry="21" fill="#080c14" stroke="#475569" stroke-width="1" />
+                <circle cx="39" cy="48" r="6" fill="#10b981" filter="url(#subtleGlow)" />
+                <circle cx="39" cy="48" r="4" fill="#34d399" />
+                <circle cx="37" cy="45" r="1.5" fill="#ffffff" />
+                <circle cx="61" cy="48" r="6" fill="#10b981" filter="url(#subtleGlow)" />
+                <circle cx="61" cy="48" r="4" fill="#34d399" />
+                <circle cx="59" cy="45" r="1.5" fill="#ffffff" />
+                <circle cx="26" cy="54" r="3" fill="#ef4444" opacity="0.5" filter="url(#subtleGlow)" />
+                <circle cx="74" cy="54" r="3" fill="#ef4444" opacity="0.5" filter="url(#subtleGlow)" />
+                <path d="M 47 54 Q 50 58 53 54" fill="none" stroke="#34d399" stroke-width="1.5" stroke-linecap="round" />
+                <path d="M 50 22 Q 50 8 51 6" fill="none" stroke="#475569" stroke-width="2" />
+                <path d="M 51 6 Q 44 2 46 5 Z" fill="#34d399" />
+                <path d="M 51 6 Q 58 2 56 5 Z" fill="#34d399" />
+                <path d="M 40 73 L 60 70 L 50 84 Z" fill="url(#darkMetal)" stroke="#94a3b8" stroke-width="1" />
+                <ellipse cx="50" cy="85" rx="10" ry="3" fill="#10b981" filter="url(#subtleGlow)" opacity="0.7"/>
+              </svg>
+            </div>
+            <div class="speech-bubble p-2 flex-1 text-xs text-slate-700 shadow-sm">
+              <div id="aiMessage" class="leading-relaxed font-mono-num">長官，請點擊右下方的「招募人才」！招募後新員工將直接入住宿舍，將滑鼠懸停在員工身上可觀看名字，按住並拖曳他們即可分配崗位！</div>
+            </div>
+          </div>
+        </div>
+
+        <button id="btnShowRobot" class="hidden btn-game px-3 py-1.5 mb-4 pointer-events-auto rounded text-xs self-start shadow-sm" onclick="toggleRobotVisible()">
+          📡 開啟 AI 視訊鏈結
+        </button>
+      </div>
+
+      <!-- 中央遊玩地圖 -->
+      <div id="camContainer" class="w-full h-full relative cursor-grab active:cursor-grabbing overflow-hidden z-10">
+        <div id="camTarget" class="absolute inset-0 flex justify-center items-end pb-[45px] transform-gpu">
+          
+          <!-- 遠景山脈 (掛載於相機層以確保完美貼合地面) -->
+          <div id="plxMountainFar" class="absolute bottom-0 w-[300vw] left-[-100vw] h-[55vh] z-0 pointer-events-none flex items-end">
+            <svg class="mountain-far w-full h-full" viewBox="0 0 1200 400" preserveAspectRatio="none">
+              <path d="M0,400 L0,200 L150,100 L350,220 L600,50 L850,250 L1050,150 L1200,280 L1200,400 Z" />
+            </svg>
+          </div>
+          <div id="plxMountainNear" class="absolute bottom-0 w-[300vw] left-[-100vw] h-[35vh] z-[1] pointer-events-none flex items-end">
+            <svg class="mountain-near w-full h-full" viewBox="0 0 1200 400" preserveAspectRatio="none">
+              <path d="M0,400 L0,280 L250,150 L500,320 L750,120 L950,280 L1200,180 L1200,400 Z" />
+            </svg>
+          </div>
+
+          <!-- 實體地面層 -->
+          <div id="groundLine"></div>
+          <!-- 建築基地板 -->
+          <div id="gameBoard" class="flex space-x-3 relative z-10 px-10">
+            <!-- 槽位由 JS 生成 -->
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 底部操作 HUD -->
+    <div class="game-panel p-3 m-4 rounded-md flex items-center justify-between z-20 pointer-events-auto relative shadow-sm">
+      
+      <!-- 建造模式選擇區 -->
+      <div id="uiBuildMenu" class="flex space-x-2">
+        <div class="text-[10px] text-slate-500 font-bold absolute -top-5 left-2 uppercase tracking-wider bg-white/90 border border-slate-200 px-2 rounded font-sci-fi shadow-sm">Construction Mode</div>
+        <button id="btnBuild_soil" class="btn-game pt-6 pb-2 px-2.5 rounded flex flex-col items-center min-w-[80px] relative" onclick="setMode('build', 'soil')">
+          <div class="absolute top-1 left-1 right-1 text-[9px] font-bold text-slate-800 bg-white/90 px-1 py-0.5 rounded shadow-sm border border-slate-300 leading-none">產出: 🌾💰</div>
+          <span class="text-amber-500 text-base mb-0.5">🌾</span>
+          <span class="text-[11px] font-bold">基礎耕地艙</span>
+          <span class="text-[9px] text-slate-600 font-mono-num font-semibold">150 💰</span>
+        </button>
+        <button id="btnBuild_energy" class="btn-game pt-6 pb-2 px-2.5 rounded flex flex-col items-center min-w-[80px] relative" onclick="setMode('build', 'energy')">
+          <div class="absolute top-1 left-1 right-1 text-[9px] font-bold text-slate-800 bg-white/90 px-1 py-0.5 rounded shadow-sm border border-slate-300 leading-none">產出: 💰</div>
+          <span class="text-yellow-600 text-base mb-0.5">⚡</span>
+          <span class="text-[11px] font-bold">太陽能陣列</span>
+          <span class="text-[9px] text-slate-600 font-mono-num font-semibold">250 💰</span>
+        </button>
+        <button id="btnBuild_research" class="btn-game pt-6 pb-2 px-2.5 rounded flex flex-col items-center min-w-[80px] relative" onclick="setMode('build', 'research')">
+          <div class="absolute top-1 left-1 right-1 text-[9px] font-bold text-slate-800 bg-white/90 px-1 py-0.5 rounded shadow-sm border border-slate-300 leading-none">產出: 💡</div>
+          <span class="text-purple-600 text-base mb-0.5">🔬</span>
+          <span class="text-[11px] font-bold">觀測研究所</span>
+          <span class="text-[9px] text-slate-600 font-mono-num font-semibold">400 💰</span>
+        </button>
+        <button id="btnBuild_water" class="btn-game pt-6 pb-2 px-2.5 rounded flex flex-col items-center min-w-[80px] relative btn-disabled" onclick="setMode('build', 'water')">
+          <div class="absolute top-1 left-1 right-1 text-[9px] font-bold text-slate-800 bg-white/90 px-1 py-0.5 rounded shadow-sm border border-slate-300 leading-none">產出: 🌾</div>
+          <span class="text-blue-500 text-base mb-0.5">💧</span>
+          <span class="text-[11px] font-bold">大氣凝結艙</span>
+          <span class="text-[9px] text-slate-500 font-mono-num font-semibold">600 💰</span>
+        </button>
+        <button id="btnBuild_eco" class="btn-game pt-6 pb-2 px-2.5 rounded flex flex-col items-center min-w-[80px] relative btn-disabled" onclick="setMode('build', 'eco')">
+          <div class="absolute top-1 left-1 right-1 text-[8px] font-bold text-slate-800 bg-white/90 px-1 py-0.5 rounded shadow-sm border border-slate-300 leading-none">產出: 💡🧬</div>
+          <span class="text-emerald-600 text-base mb-0.5">🌿</span>
+          <span class="text-[11px] font-bold">基因生態艙</span>
+          <span class="text-[9px] text-slate-500 font-mono-num font-semibold">1200 💰 / 300 🌾</span>
+        </button>
+        <button id="btnBuild_living" class="btn-game pt-6 pb-2 px-2.5 rounded flex flex-col items-center min-w-[80px] relative" onclick="setMode('build', 'living')">
+          <div class="absolute top-1 left-1 right-1 text-[9px] font-bold text-slate-800 bg-white/90 px-1 py-0.5 rounded shadow-sm border border-slate-300 leading-none">產出: 無</div>
+          <span class="text-slate-500 text-base mb-0.5">🏠</span>
+          <span class="text-[11px] font-bold">人員居住艙</span>
+          <span class="text-[9px] text-slate-500 font-mono-num font-semibold">300 💰</span>
+        </button>
+      </div>
+
+      <!-- 目前模式 HUD 提示 -->
+      <div id="modeIndicator" class="flex-1 mx-4 text-center font-bold text-slate-600 flex flex-col items-center justify-center border border-slate-200 bg-white/50 rounded p-2 h-full shadow-inner">
+         <span class="tracking-widest uppercase text-xs">指揮端已部署</span>
+         <span class="text-[10px] text-slate-400 font-normal mt-1">選取上方建築，或開啟右方招募面板調配。</span>
+      </div>
+
+      <!-- 右下科技研發與管理按鈕 -->
+      <div id="uiOperations" class="flex space-x-2 relative">
+        <div class="text-[10px] text-slate-500 font-bold absolute -top-5 right-2 uppercase tracking-wider bg-white/90 border border-slate-200 px-2 rounded font-sci-fi shadow-sm">Operations</div>
+        <button id="btnOpenResearch" class="btn-game px-3.5 py-2 rounded border-purple-500 text-purple-700 hover:text-purple-900 transition-colors font-bold shadow-[0_0_15px_rgba(168,85,247,0.3)] animate-pulse" onclick="toggleResearchModal(true)">🔬 全息科技樹</button>
+        
+        <!-- 招募人才按鈕 -->
+        <button id="btnRecruitMenu" class="btn-game px-5 py-2 rounded font-bold text-blue-700 border-blue-500 hover:bg-blue-50 relative" onclick="toggleRecruitModal(true)">
+          🤝 招募人才
+          <span id="recruitBadge" class="absolute -top-2 -right-2 bg-red-500 text-white text-[11px] w-5 h-5 rounded-full flex items-center justify-center animate-bounce hidden shadow-md border-2 border-white z-20">!</span>
+        </button>
+        
+        <button id="btnModeDemolish" class="btn-game btn-danger px-3 py-2 rounded font-bold" onclick="setMode('demolish')">拆除設施</button>
+        <button id="btnModeFire" class="btn-game btn-danger px-3 py-2 rounded font-bold" onclick="setMode('fire')">人事裁撤</button>
+        <button id="btnCancel" class="btn-game px-3.5 py-2 rounded border-slate-400 text-slate-600 hover:text-slate-900 hidden" onclick="cancelMode()">右鍵退出模式 </button>
+      </div>
+    </div>
+    
+    <!-- 🗓️ 月份更迭全螢幕提示動畫 -->
+    <div id="monthTransitionOverlay" class="fixed inset-0 z-[90] flex flex-col items-center justify-center pointer-events-none opacity-0">
+      <div class="absolute inset-0 bg-emerald-950/40 backdrop-blur-sm"></div>
+      <div class="absolute inset-x-0 h-[3px] bg-emerald-400 shadow-[0_0_30px_rgba(52,211,153,1)]" id="monthTransitionLine"></div>
+      <div class="relative z-10 flex flex-col items-center" id="monthTransitionContent">
+        <h2 class="font-sci-fi text-6xl md:text-8xl font-black text-transparent bg-clip-text bg-gradient-to-b from-emerald-200 to-emerald-500 drop-shadow-[0_0_20px_rgba(16,185,129,0.8)] mb-4 tracking-[0.25em] uppercase">System Update</h2>
+        <div class="text-2xl md:text-4xl text-white font-bold tracking-widest drop-shadow-lg bg-emerald-900/90 px-10 py-3 rounded-full border-2 border-emerald-400/60 shadow-[0_0_25px_rgba(16,185,129,0.5)] flex items-center">
+          進入第 <span id="monthTransitionNum" class="font-mono-num text-yellow-400 text-4xl md:text-6xl mx-3 pb-1"></span> 個月
+        </div>
+        <p class="mt-6 text-emerald-100 font-mono-num tracking-widest text-sm md:text-base bg-slate-900/80 px-6 py-2 rounded-lg border border-emerald-500/30">
+          >> 📡 招募名冊已刷新 | 資源產出已結算 <<
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <!-- 招募人才中央彈窗 -->
+  <div id="recruitModal" class="fixed inset-0 bg-slate-950/70 backdrop-blur-md z-50 flex items-center justify-center hidden pointer-events-auto">
+    <div class="game-panel p-6 rounded-3xl max-w-5xl w-11/12 border-2 border-emerald-500 shadow-[0_0_50px_rgba(5,150,105,0.4)] flex flex-col h-[480px]">
+      <div class="flex justify-between items-center pb-3 border-b border-slate-700 shrink-0">
+        <div class="flex items-center gap-3">
+          <h2 class="text-2xl font-bold text-slate-900 tracking-widest flex items-center gap-2"><span>🤝</span> 聯邦高階人才招募終端</h2>
+          <span id="modalLimitLabel" class="text-sm text-emerald-600 bg-emerald-100 px-3 py-1 rounded-full border border-emerald-300 font-bold shadow-inner">本月剩餘招募: 5/5</span>
+        </div>
+        <button onclick="toggleRecruitModal(false)" class="text-slate-500 hover:text-slate-900 text-4xl leading-none px-4 rounded hover:bg-slate-200 transition-colors">&times;</button>
+      </div>
+      
+      <div class="text-[12px] text-emerald-700 font-bold pt-3 tracking-widest shrink-0">
+        💡 招募說明：所有聘用之科研人員將 **直接分配至「人員居住艙 (🏠)」或「基地總部」** 進行休憩待命。
+        <br>您可以隨時在主畫面中將他們 **「按住拖曳」** 至不同的生產車間！
+      </div>
+      
+      <div id="modalCandidatesContent" class="flex-1 overflow-x-auto overflow-y-hidden flex items-center px-4 pb-4 pt-2 gap-6 custom-scrollbar">
+        <!-- 人物大卡片由此注入 -->
+      </div>
+    </div>
+  </div>
+
+  <!-- 創科誓言 / 證書模態框 -->
+  <div id="vowModal" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/85 backdrop-blur-md hidden">
+    <div class="game-panel p-8 rounded-3xl max-w-xl w-11/12 border-2 border-amber-500 shadow-2xl flex flex-col gap-6 text-left">
+      <div class="text-center">
+        <span class="text-5xl">🏆</span>
+        <h2 class="text-2xl font-black text-amber-700 mt-2 orbitron">創科薪火相傳證書</h2>
+        <p class="text-xs text-slate-500 mt-1">THE SEED OF INNOVATION LEGACY</p>
+      </div>
+      
+      <div class="bg-slate-50 p-5 rounded-2xl border border-slate-200 space-y-4">
+        <p class="text-sm text-slate-700 text-center italic">
+          「一粒種子，能改變一個世界。昔日的『禾下乘涼夢』已然成真，國家的未來科技藍圖，正等著你們接棒前行。」
+        </p>
+        <div class="space-y-2">
+          <label class="block text-xs text-emerald-700 font-bold">新一代創科接班人簽名：</label>
+          <input type="text" id="vowName" placeholder="請輸入您的名字..." class="w-full bg-white border border-emerald-600/30 rounded-lg py-2.5 px-4 text-slate-800 text-sm focus:outline-none focus:border-emerald-500">
+        </div>
+        <div class="space-y-2">
+          <label class="block text-xs text-emerald-700 font-bold">選擇您的創科志向：</label>
+          <select id="vowPath" class="w-full bg-white border border-emerald-600/30 rounded-lg py-2.5 px-4 text-slate-800 text-sm focus:outline-none focus:border-emerald-500">
+            <option value="智慧農業與生態工程專家">🌾 智慧農業與生態工程專家 (承襲袁隆平精神)</option>
+            <option value="深空與航太科技工程師">🚀 深空探索與航太科技專家 (開創星辰大海)</option>
+            <option value="生命科學與基因密碼解碼師">🧬 醫療健康與生命基因工程師 (探索微觀奇蹟)</option>
+            <option value="綠色新能源與氣候規劃學家">🌍 綠色低碳能源與環境守護者 (重塑蔚藍家園)</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="flex gap-3">
+        <button onclick="confirmVow()" class="flex-1 py-3 bg-amber-500 hover:bg-amber-400 text-slate-950 font-black rounded-xl transition-all shadow-md">
+          ✍️ 確立我的創科誓言
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 結算彈窗 -->
+  <div id="modalEndGame" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-md hidden">
+    <div id="endGameBorder" class="game-panel p-8 rounded-3xl max-w-lg w-full border-2 border-green-500 shadow-2xl text-center">
+      <h2 id="endGameTitle" class="text-3xl font-black mb-4">🏆 任務結算</h2>
+      <div id="endGameDesc" class="text-slate-700 text-sm leading-relaxed mb-8">
+        <!-- 結算內容 -->
+      </div>
+      <button onclick="restartGame()" class="btn-game px-8 py-3 text-sm font-bold rounded shadow-lg">重新啟動計劃</button>
+    </div>
+  </div>
+
+  <script>
+    // ==========================================
+    // 人才與聘任系統 
+    // ==========================================
+    const firstNames = ['林', '陳', '張', '李', '王', '吳', '劉', '黃', '蔡', '楊'];
+    const titles = ['院士', '博士', '研究員', '工程師', '專家'];
+
+    // 個性化外觀庫
+    const colorPalette = ['#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#f43f5e', '#06b6d4', '#6366f1', '#14b8a6', '#eab308'];
+    const visorColors = ['#ffffff', '#a5f3fc', '#fde047', '#fbcfe8', '#86efac'];
+
+    function generateCandidates() {
+      currentCandidates = [];
+      for (let i = 0; i < 5; i++) {
+        const name = firstNames[Math.floor(Math.random() * firstNames.length)] + titles[Math.floor(Math.random() * titles.length)] + '-' + talentCounter++;
+        currentCandidates.push({
+          id: 'cand_' + Date.now() + '_' + i + '_' + Math.floor(Math.random() * 1000), 
+          name: name,
+          costFunding: 200 + (Math.floor(Math.random() * 5) * 40),
+          costFood: 120 + (Math.floor(Math.random() * 4) * 30),
+          color: colorPalette[Math.floor(Math.random() * colorPalette.length)],
+          visor: visorColors[Math.floor(Math.random() * visorColors.length)],
+          accessory: Math.floor(Math.random() * 3) // 0: None, 1: Backpack, 2: Antenna
+        });
+      }
+      renderRecruitModalContent();
+    }
+
+    window.buyTalent = function(candidateId) {
+      const candidate = currentCandidates.find(c => c.id === candidateId);
+      if (!candidate) return;
+
+      let targetRoom = null;
+      let foundSpace = false;
+
+      for (let s = 0; s < SLOTS_COUNT; s++) {
+        for (let r = 0; r < board[s].length; r++) {
+          const room = board[s][r];
+          if (room.type === 'living' || room.id === 'room_hq') {
+            if (room.workers.length < 3) {
+              targetRoom = room;
+              foundSpace = true;
+              break;
+            }
+          }
+        }
+        if (foundSpace) break;
+      }
+
+      if (!foundSpace) {
+        aiSpeak('<span class="text-red-500 font-bold">招募失敗：所有「人員居住艙」及「基地總部」床位均已滿員（最大 3 人）！請先建造更多「人員居住艙 (🏠)」以容納新成員！</span>');
+        return;
+      }
+
+      if (recruitsThisMonth >= MAX_RECRUITS_PER_MONTH) {
+        aiSpeak('<span class="text-red-500 font-bold">本月招聘額度已耗盡 (5/5)！請等待下月。</span>');
+        return;
+      }
+
+      if (resources.funding >= candidate.costFunding && resources.food >= candidate.costFood) {
+        resources.funding -= candidate.costFunding;
+        resources.food -= candidate.costFood;
+        
+        recruitsThisMonth++;
+        const newTalentId = 't_' + Date.now() + Math.random();
+
+        const newTalent = {
+          id: newTalentId,
+          name: candidate.name,
+          assignedTo: targetRoom.id,
+          color: candidate.color,
+          visor: candidate.visor,
+          accessory: candidate.accessory
+        };
+        talents.push(newTalent);
+        targetRoom.workers.push(newTalentId);
+        targetRoom.animState = 'arrived';
+
+        currentCandidates = currentCandidates.filter(c => c.id !== candidate.id);
+
+        updateUI();
+        renderBoard();
+        renderRecruitModalContent();
+        
+        const roomName = targetRoom.id === 'room_hq' ? '基地總部🏢' : '人員居住艙🏠';
+        aiSpeak(`[${candidate.name}] 招募成功！已直接入住「${roomName}」宿位。<br>請直接從宿舍中將他們「拖曳指派」到地圖上的其他科研崗位！`);
+      } else {
+        aiSpeak('<span class="text-red-500 font-bold">經費或糧草不足，無法為其開拓合約！</span>');
+      }
+    };
+
+    function recruitTalentDirect(name) {
+      const centerIndex = Math.floor(SLOTS_COUNT / 2);
+      const spawnRoom = board[centerIndex][0]; 
+      const newT = {
+        id: 't_' + Date.now() + Math.random(),
+        name: name,
+        assignedTo: spawnRoom.id,
+        color: colorPalette[Math.floor(Math.random() * colorPalette.length)],
+        visor: visorColors[Math.floor(Math.random() * visorColors.length)],
+        accessory: Math.floor(Math.random() * 3)
+      };
+      talents.push(newT);
+      spawnRoom.workers.push(newT.id);
+      spawnRoom.animState = 'arrived';
+      renderRecruitModalContent();
+      renderBoard();
+    }
+
+    function reclaimTalent(talentId) {
+      const t = talents.find(x => x.id === talentId);
+      if (t && t.assignedTo) {
+        for (let s = 0; s < SLOTS_COUNT; s++) {
+          for (let r = 0; r < board[s].length; r++) {
+            board[s][r].workers = board[s][r].workers.filter(id => id !== talentId);
+          }
+        }
+        t.assignedTo = null;
+        renderBoard();
+        renderRecruitModalContent();
+        aiSpeak(`[${t.name}] 已退出任務崗位，回到閒置列表。`);
+      }
+    }
+
+    // ==========================================
+    // 視覺小說故事對白 (VN Story Scripts) - 加入強烈危機感
+    // ==========================================
+    const storyScripts = {
+      prologue: [
+        { speaker: 'seed', name: 'SEED-01', text: '緊急報告！長官，地表沙塵暴指數已突破臨界點，地下避難所的儲備糧食僅剩最後 15 個月！人類文明正處於存亡邊緣！' },
+        { speaker: 'player', name: '指揮官 (您)', text: '局勢已經如此危急... 無數同胞正在飢餓中掙扎，我們決不能坐以待斃。系統，還有任何備用方案嗎？' },
+        { speaker: 'seed', name: 'SEED-01', text: '正在檢索國家最高機密檔案... 找到了一線生機！這是一段來自 20 世紀中葉的珍貴農業歷史記錄。那時的國家，也曾面臨嚴峻的溫飽考驗。' },
+        { speaker: 'seed', name: 'SEED-01', text: '在那個艱難歲月裡，有一位偉大的科學家——袁隆平院士。他曾發願：「我做過一個夢，夢見水稻長得有高粱那麼高，穗子像掃把那麼長...」' },
+        { speaker: 'player', name: '指揮官 (您)', text: '「...我和我的助手們就坐在稻穗下乘涼。」著名的『禾下乘涼夢』！這不僅是科學家的夢，更是中華民族幾千年來期盼溫飽的偉大夢想。' },
+        { speaker: 'seed', name: 'SEED-01', text: '是的！如果我們能繼承他的科研精神，在絕境中培育出適應極端氣候的超級種子，就能拯救所有人！' },
+        { speaker: 'player', name: '指揮官 (您)', text: '沒有退路了！身為「創穗計劃」總指揮，我誓死守衛同胞的未來！' },
+        { speaker: 'seed', name: 'SEED-01', text: '全體系統上線！請長官立即建立科研基地，帶領我們創造奇蹟，將那片金黃色的希望，重新灑滿地球！' }
+      ],
+      chapter1: [
+        { speaker: 'seed', name: 'SEED-01', text: '警告！一號溫室氣壓異常，沙塵正在滲透！長官，常規的基因培育法已經失敗了，植物大面積枯萎！' },
+        { speaker: 'player', name: '指揮官 (您)', text: '我們不能用老方法對抗前所未有的災難... 當年袁隆平院士在試驗田裡，也是拋棄了傳統，偶然發現了一株『鶴立雞群』的特異水稻！' },
+        { speaker: 'seed', name: 'SEED-01', text: '但在當時，國際權威學說斷言「水稻沒有雜交優勢」。他選擇相信自己的雙眼與土地，而不是盲從書本。' },
+        { speaker: 'player', name: '指揮官 (您)', text: '在國家存亡面前，絕不能迷信外國權威！我們必須立足這片受傷的土地，走一條自主創新的新路！' },
+        { speaker: 'player', name: '指揮官 (您)', text: '啟動所有備用能源！全體人員解鎖「優勢基因觀察法」，從枯萎中尋找那一株生命的奇蹟！' }
+      ],
+      chapter2: [
+        { speaker: 'seed', name: 'SEED-01', text: '生態讀數持續惡化... 我們的研究員已經連續高強度工作了 72 小時，許多人因過度勞累倒下。尋找特殊基因如同大海撈針...' },
+        { speaker: 'player', name: '指揮官 (您)', text: '看著外面的沙暴，再苦也得撐下去！當年袁隆平團隊在海南的烈日下，拿著放大鏡彎著腰，在幾萬株水稻中苦苦尋覓，他們可曾放棄？' },
+        { speaker: 'seed', name: 'SEED-01', text: '檔案顯示，他們在尋找了整整 14 萬個稻穗後，終於在野外找到了那株極為珍貴的『天然雄性不育株』（野敗）！' },
+        { speaker: 'player', name: '指揮官 (您)', text: '這就是科研的代價。每一個拯救國家的科技突破，都是無數科學家燃燒生命換來的。' },
+        { speaker: 'player', name: '指揮官 (您)', text: '為了背後的億萬同胞，我們沒有資格說放棄！醫療艙待命，其餘人員咬緊牙關，繼續攻堅解碼！' }
+      ],
+      chapter3: [
+        { speaker: 'seed', name: 'SEED-01', text: '奇蹟！長官，這是奇蹟！我們在廢墟邊緣找到了能適應當前劇毒土壤的突變基因雛形！' },
+        { speaker: 'player', name: '指揮官 (您)', text: '找到了... 我們終於抓住了命運的曙光！當年袁院士找到『野敗』後，做出了什麼決定？' },
+        { speaker: 'seed', name: 'SEED-01', text: '他沒有將其據為己有，而是將這個無比珍貴的材料無私地分享給了全國的科研單位！開啟了史無前例的『全國大協作』！' },
+        { speaker: 'player', name: '指揮官 (您)', text: '這就是中國科學家胸懷天下的愛國情操！在亡國滅種的危機前，沒有個人得失，只有國家的未來！' },
+        { speaker: 'player', name: '指揮官 (您)', text: '打通所有地底避難所的通訊頻道！毫無保留地共享我們的基因序列，讓全人類的智慧匯聚於此，迎接最後的決戰！' }
+      ],
+      ending: [] // 結局對白動態生成
+    };
+
+    let currentStoryArray = [];
+    let currentStoryIndex = 0;
+    let isTyping = false;
+    let currentTimeout = null;
+    let activeChapter = null;
+    let gameWon = false;
+
+    // 啟動 VN 對話
+    function startVnStory(chapterKey) {
+      if (!storyScripts[chapterKey]) return;
+      
+      setSpeed(0); // 暫停遊戲時間
+      activeChapter = chapterKey;
+      currentStoryArray = storyScripts[chapterKey];
+      currentStoryIndex = 0;
+      
+      document.getElementById('vnOverlay').classList.remove('hidden');
+      renderVnLine();
+    }
+
+    // 渲染每一句 VN 對白
+    function renderVnLine() {
+      if (currentStoryIndex >= currentStoryArray.length) {
+        endVnStory();
+        return;
+      }
+      
+      const line = currentStoryArray[currentStoryIndex];
+      const charLeft = document.getElementById('vnCharLeft');
+      const charRight = document.getElementById('vnCharRight');
+      const nameBox = document.getElementById('vnNameBox');
+      const textBorder = document.getElementById('vnTextBoxBorder');
+      const textContent = document.getElementById('vnTextContent');
+
+      // 設定打字機文字
+      textContent.innerHTML = '';
+      isTyping = true;
+      let charIndex = 0;
+      if (currentTimeout) clearTimeout(currentTimeout);
+
+      function typeWriter() {
+        if (charIndex < line.text.length) {
+          textContent.innerHTML = line.text.substring(0, charIndex + 1) + '<span class="text-cursor"></span>';
+          charIndex++;
+          currentTimeout = setTimeout(typeWriter, 35); // 打字速度
+        } else {
+          isTyping = false;
+          textContent.innerHTML = line.text + '<span class="text-cursor"></span>';
+        }
+      }
+      typeWriter();
+
+      // 設定高亮與樣式
+      nameBox.innerText = line.name;
+      
+      if (line.speaker === 'seed') {
+        charLeft.classList.add('vn-active'); charLeft.classList.remove('vn-inactive');
+        charRight.classList.add('vn-inactive'); charRight.classList.remove('vn-active');
+        
+        nameBox.className = "absolute -top-6 left-6 px-6 py-1.5 font-bold text-emerald-950 text-lg rounded-t-lg border-t-2 border-l-2 border-r-2 tracking-widest z-10 shadow-[0_-5px_15px_rgba(0,0,0,0.3)] transition-colors duration-300 bg-emerald-400 border-emerald-300";
+        textBorder.className = "bg-slate-900/95 border-2 rounded-xl rounded-tl-none p-6 md:p-8 min-h-[160px] shadow-[0_10px_30px_rgba(16,185,129,0.2)] relative overflow-hidden transition-colors duration-300 border-emerald-500/80";
+      } else {
+        charRight.classList.add('vn-active'); charRight.classList.remove('vn-inactive');
+        charLeft.classList.add('vn-inactive'); charLeft.classList.remove('vn-active');
+        
+        nameBox.className = "absolute -top-6 left-6 px-6 py-1.5 font-bold text-sky-950 text-lg rounded-t-lg border-t-2 border-l-2 border-r-2 tracking-widest z-10 shadow-[0_-5px_15px_rgba(0,0,0,0.3)] transition-colors duration-300 bg-sky-400 border-sky-300";
+        textBorder.className = "bg-slate-900/95 border-2 rounded-xl rounded-tl-none p-6 md:p-8 min-h-[160px] shadow-[0_10px_30px_rgba(56,189,248,0.2)] relative overflow-hidden transition-colors duration-300 border-sky-500/80";
+      }
+    }
+
+    // 點擊繼續對話
+    window.advanceVnDialogue = function() {
+      if (isTyping) {
+        if (currentTimeout) clearTimeout(currentTimeout);
+        document.getElementById('vnTextContent').innerHTML = currentStoryArray[currentStoryIndex].text + '<span class="text-cursor"></span>';
+        isTyping = false;
+      } else {
+        currentStoryIndex++;
+        renderVnLine();
+      }
+    }
+
+    // 略過故事
+    window.skipVnStory = function(e) {
+      e.stopPropagation(); 
+      if (currentTimeout) clearTimeout(currentTimeout);
+      endVnStory();
+    }
+
+    // 結束對話並恢復遊戲或進入結尾
+    function endVnStory() {
+      document.getElementById('vnOverlay').classList.add('hidden');
+      if (activeChapter === 'ending') {
+        if (gameWon) {
+          // 勝利：引導至手寫姓名誓言面板
+          document.getElementById('vowModal').classList.remove('hidden');
+        } else {
+          // 失敗結局：不簽誓言直接進入結果通報結算
+          endGame();
+        }
+      } else if (activeChapter === 'prologue') {
+        setTimeout(startTutorial, 200); // 啟動教學
+      } else {
+        setSpeed(1); // 恢復遊戲時間流動
+      }
+      activeChapter = null;
+    }
+
+    // 🚀 動態準備終章劇本 (根據勝利與否)
+    function prepareEndingScript(isWin) {
+      if (isWin) {
+        storyScripts.ending = [
+          { speaker: 'seed', name: 'SEED-01', text: '報告長官！！地表沙暴... 停止了。土壤毒性指數正在以幾何級數下降！【終極三系配套】... 研發成功！' },
+          { speaker: 'player', name: '指揮官 (您)', text: '看啊... 監視器傳來的畫面，那些綠色的嫩芽正在衝破焦土！我們做到了，我們從死神手裡搶回了地球！' },
+          { speaker: 'seed', name: 'SEED-01', text: '系統檢測到全球生態正在奇蹟般復甦。幾何級增長的高抗逆性糧食，足以解決所有避難所的飢荒！我們勝利了！' },
+          { speaker: 'player', name: '指揮官 (您)', text: '這是無數前人與我們共同浴血奮戰的結果。袁爺爺，您的『禾下乘涼夢』，我們在這最黑暗的時代，親手將它變成了現實！' },
+          { speaker: 'seed', name: 'SEED-01', text: '人類文明的火種得以延續！長官，請簽署這份「創科薪火相傳證書」，向歷史宣告：中華民族的創科精神，永不熄滅！' }
+        ];
+      } else {
+        storyScripts.ending = [
+          { speaker: 'seed', name: 'SEED-01', text: '長官... 倒數計時結束。能源耗盡，防護罩即將崩塌，極端風暴正在吞噬最後的避難所...' },
+          { speaker: 'player', name: '指揮官 (您)', text: '終究還是差了一步嗎... 我們低估了這場災難的殘酷，眼看著同胞們失去最後的希望，這份痛楚...' },
+          { speaker: 'seed', name: 'SEED-01', text: '歷史數據載入中：袁隆平院士在培育雜交水稻時，也曾遭遇無數次的失敗，試驗田甚至曾被全部毀壞。但他從未屈服於命運。' },
+          { speaker: 'player', name: '指揮官 (您)', text: '你說得對... 中華民族幾千年來歷經無數劫難，從未倒下！只要還有一口氣在，我們的科研火種就絕不熄滅！' },
+          { speaker: 'seed', name: 'SEED-01', text: '備用種子庫已深埋地下！長官，請重整旗鼓，吸取這次血的教訓。下一次，我們一定能帶領人類走向黎明！' }
+        ];
+      }
+    }
+
+
+    // ==========================================
+    // 🎓 遊戲互動教學系統 (Tutorial)
+    // ==========================================
+    let currentTutorialIndex = 0;
+    const tutorialSteps = [
+      {
+        target: 'uiMonthBox',
+        text: '長官，歡迎來到地球復育指揮終端！<br><br>我們的時間非常緊迫，您只有 <b class="text-emerald-400">15 個月</b> 的時間來拯救地球的溫飽危機。如果時限內未能完成目標，計劃就會宣告失敗！'
+      },
+      {
+        target: 'btnOpenResearch',
+        text: '要贏得這場戰役，您必須透過右下角的<b class="text-purple-400">『全息科技樹』</b>，一路研發解鎖到最底層的終極技術——<b class="text-amber-400">「終極三系配套」</b>。'
+      },
+      {
+        target: 'uiResourceBar',
+        text: '解鎖科技需要大量的資源。<br><br>請注意右上角的資源列：我們需要 <b class="text-yellow-400">💰科研經費</b>、<b class="text-orange-400">🌾耐旱糧草</b>、<b class="text-purple-400">💡研究靈感</b> 以及最為珍貴的 <b class="text-emerald-400">🧬罕見基因</b>！'
+      },
+      {
+        target: 'uiBuildMenu',
+        text: '要獲取這些資源，您必須在基地中建設各種設施。<br><br>在左下方選擇您要的艙室（例如『基礎耕地艙』），然後點擊畫面中央有『+』號的空位來進行建設。'
+      },
+      {
+        target: 'btnRecruitMenu',
+        text: '建築蓋好後是不會自動運作的！<br><br>您必須點擊<b class="text-blue-400">『招募人才』</b>聘請科學家。招募後，您可以直接用滑鼠<b class="text-emerald-400">『按住並拖曳』</b>小人到對應的艙室中進行工作！'
+      },
+      {
+        target: 'gameBoard',
+        text: '每層地基最多只能承受 <b class="text-red-400">3 層樓</b> 的重量，且每個房間最多只能容納 <b class="text-red-400">3 名科學家</b>。請謹慎調配您的人力與空間！<br><br>如果有需要，可以使用右下角的『拆除』或『裁撤』功能。'
+      },
+      {
+        target: 'uiSpeedControls',
+        text: '所有的建設與研發都會隨著時間推進而產出資源。<br><br>請點擊上方的<b class="text-green-400">『▶️ 1x』</b>播放按鈕，我們正式開工吧！祝您好運，長官！'
+      }
+    ];
+
+    function startTutorial() {
+      const overlay = document.getElementById('tutorialOverlay');
+      overlay.classList.remove('hidden');
+      currentTutorialIndex = 0;
+      renderTutorialStep();
+    }
+
+    function renderTutorialStep() {
+      if (currentTutorialIndex >= tutorialSteps.length) {
+        endTutorial();
+        return;
+      }
+
+      const step = tutorialSteps[currentTutorialIndex];
+      const spotlight = document.getElementById('tutorialSpotlight');
+      const dialog = document.getElementById('tutorialDialog');
+      const textEl = document.getElementById('tutorialText');
+
+      textEl.innerHTML = step.text;
+
+      if (step.target) {
+        const targetEl = document.getElementById(step.target);
+        if (targetEl) {
+          const rect = targetEl.getBoundingClientRect();
+          const padding = 12;
+          spotlight.style.left = (rect.left - padding) + 'px';
+          spotlight.style.top = (rect.top - padding) + 'px';
+          spotlight.style.width = (rect.width + padding * 2) + 'px';
+          spotlight.style.height = (rect.height + padding * 2) + 'px';
+          spotlight.style.opacity = '1';
+
+          if (rect.top > window.innerHeight / 2) {
+            dialog.style.top = '20%';
+          } else {
+            dialog.style.top = '70%';
+          }
+        }
+      } else {
+        spotlight.style.opacity = '0';
+        dialog.style.top = '50%';
+      }
+    }
+
+    window.advanceTutorial = function() {
+      currentTutorialIndex++;
+      renderTutorialStep();
+    };
+
+    function endTutorial() {
+      const overlay = document.getElementById('tutorialOverlay');
+      overlay.classList.add('hidden');
+      aiSpeak('【系統提示】教學結束。請點擊頂部控制列的播放鍵 (1x 或 2x) 開始時間流動！');
+    }
+
+    // ==========================================
+    // ⚙️ 平衡性數據與配置 (4 種資源「罕見基因 🧬」)
+    // ==========================================
+    const roomTypes = {
+      soil:   { id: 'soil',   name: '基礎耕地艙', icon: '🌾', cost: { funding: 150, food: 0 }, output: { funding: 5, food: 15, inspiration: 0, gene: 0 }, produces: '🌾💰' },
+      energy: { id: 'energy', name: '太陽能陣列', icon: '⚡', cost: { funding: 250, food: 0 }, output: { funding: 35, food: 0, inspiration: 0, gene: 0 }, produces: '💰' },
+      research: { id: 'research', name: '觀測研究所', icon: '🔬', cost: { funding: 400, food: 0 }, output: { funding: -10, food: 0, inspiration: 2, gene: 0 }, produces: '💡' },
+      water:  { id: 'water',  name: '大氣凝結艙', icon: '💧', cost: { funding: 600, food: 0 }, output: { funding: -20, food: 60, inspiration: 0, gene: 0 }, produces: '🌾' },
+      eco:    { id: 'eco',    name: '基因生態艙', icon: '🌿', cost: { funding: 1200, food: 300 }, output: { funding: -60, food: -10, inspiration: 1, gene: 0.5 }, produces: '💡🧬' },
+      living: { id: 'living', name: '人員居住艙', icon: '🏠', cost: { funding: 300, food: 0 }, output: { funding: -10, food: -15, inspiration: 0, gene: 0 }, produces: '無' }
+    };
+
+    // 🚀 全新橫向樹狀結構科技節點配置
+    // (15 節點佈局：2並聯 -> 1收束 -> 2分歧 -> 2並聯 -> 2並聯 -> 2並聯 -> 1最終收束)
+    const techNodes = [
+      // 第一列 (2 並聯)
+      { id: 'tech_plant_1', col: 1, row: 2, name: '優勢基因觀察法', desc: '使所有耕地艙(🌾)的糧草產出增加 40%', cost: { funding: 0, food: 800, inspiration: 0, gene: 0 }, effect: 'soil_boost', req: [] },
+      { id: 'tech_room_1', col: 1, row: 4, name: '光伏超導電網', desc: '提升太陽能陣列(⚡)轉換率，使其經費產出增加 50%', cost: { funding: 1000, food: 0, inspiration: 0, gene: 0 }, effect: 'energy_boost', req: [] },
+
+      // 第二列 (2 並聯)
+      { id: 'tech_plant_1a', col: 2, row: 2, name: '根系共生菌群', desc: '耕地艙(🌾)糧草產出額外增加 50%', cost: { funding: 1000, food: 1500, inspiration: 0, gene: 0 }, effect: 'soil_boost_2', req: ['tech_plant_1'] },
+      { id: 'tech_room_1a', col: 2, row: 4, name: '深層地熱循環', desc: '人員居住艙(🏠)不再消耗經費與糧草', cost: { funding: 2500, food: 1000, inspiration: 0, gene: 0 }, effect: 'living_boost', req: ['tech_room_1'] },
+
+      // 第三列 (1 收束，關鍵點：5x加速)
+      { id: 'tech_speed', col: 3, row: 3, name: '時空運算協定 (5x)', desc: '融合初期觀測與水循環數據，解鎖 5x 時空加速模擬！', cost: { funding: 5000, food: 3000, inspiration: 500, gene: 0 }, effect: 'unlock_5x', req: ['tech_plant_1a', 'tech_room_1a'], isKey: true },
+
+      // 第四列 (2 分歧)
+      { id: 'tech_plant_2', col: 4, row: 2, name: '雄性不育株尋覓', desc: '解鎖「大氣凝結艙(💧)」。準備水利工程以應對乾旱。', cost: { funding: 6000, food: 5000, inspiration: 800, gene: 0 }, unlockRoom: 'water', req: ['tech_speed'] },
+      { id: 'tech_room_2', col: 4, row: 4, name: '封閉大氣微氣候', desc: '解鎖「基因生態艙(🌿)」。這是獲取【罕見基因🧬】的唯一工具！', cost: { funding: 8000, food: 0, inspiration: 1000, gene: 0 }, unlockRoom: 'eco', req: ['tech_speed'] },
+
+      // 第五列 (2 並聯)
+      { id: 'tech_plant_2a', col: 5, row: 2, name: '氣候韌性雜交', desc: '基因生態艙(🌿)的資源產出(含🧬)增加 40%', cost: { funding: 10000, food: 12000, inspiration: 1500, gene: 0 }, effect: 'eco_boost_1', req: ['tech_plant_2'] },
+      { id: 'tech_room_2a', col: 5, row: 4, name: '高效水循環網', desc: '優化基地水分重複利用率。大氣凝結艙(💧)的糧草產出增加 50%', cost: { funding: 15000, food: 15000, inspiration: 1800, gene: 0 }, effect: 'water_boost_1', req: ['tech_room_2'] },
+
+      // 第六列 (2 並聯)
+      { id: 'tech_plant_2b', col: 6, row: 2, name: '高抗逆性種子', desc: '培育出極限種子。基因生態艙(🌿)的產出再增加 50%', cost: { funding: 20000, food: 30000, inspiration: 3000, gene: 0 }, effect: 'eco_boost_2', req: ['tech_plant_2a'] },
+      { id: 'tech_room_2b', col: 6, row: 4, name: '奈米級濾水透膜', desc: '大氣凝結艙(💧)不再消耗經費，並開始生產 10 💰', cost: { funding: 35000, food: 0, inspiration: 4000, gene: 200 }, effect: 'water_boost_2', req: ['tech_room_2a'] },
+
+      // 第七列 (2 並聯)
+      { id: 'tech_plant_3', col: 7, row: 2, name: '『野敗』全國大協作', desc: '無私分享核心基因材料。大幅增加耕地艙產能！', cost: { funding: 50000, food: 60000, inspiration: 6000, gene: 500 }, effect: 'seed_one', req: ['tech_plant_2b'] },
+      { id: 'tech_room_3', col: 7, row: 4, name: '全自動生態智能網絡', desc: '研究所研發效率暴增。分配的研究人員在所有建築產能翻倍！', cost: { funding: 75000, food: 40000, inspiration: 8000, gene: 800 }, effect: 'double_efficiency', req: ['tech_room_2b'] },
+
+      // 第八列 (2 並聯)
+      { id: 'tech_plant_3a', col: 8, row: 2, name: '分子標記輔助育種', desc: '極大化生態艙與耕地艙產能，為最終突破鋪墊。', cost: { funding: 90000, food: 90000, inspiration: 10000, gene: 1500 }, effect: 'seed_boost_final', req: ['tech_plant_3'] },
+      { id: 'tech_room_4', col: 8, row: 4, name: '天基氣候控制陣列', desc: '與軌道衛星連線。所有建築產能提升至原本的 3 倍！', cost: { funding: 100000, food: 60000, inspiration: 12000, gene: 2000 }, effect: 'super_efficiency', req: ['tech_room_3'] },
+
+      // 第九列：唯一終極勝利節點 (1 收束)
+      { id: 'tech_final', col: 9, row: 3, name: '終極三系配套', desc: '【終極任務目標】徹底解決溫飽危機，獲取最終勝利！', cost: { funding: 150000, food: 120000, inspiration: 18000, gene: 4000 }, effect: 'win_game', req: ['tech_plant_3a', 'tech_room_4'], isKey: true }
+    ];
+
+    let resources = { funding: 800, food: 300, inspiration: 10, gene: 0 };
+
+    let gameSpeed = 1; 
+    let currentMonth = 1;
+    let monthTickProgress = 0; 
+    const TICK_INTERVAL = 100; 
+
+    let recruitsThisMonth = 0;
+    const MAX_RECRUITS_PER_MONTH = 5;
+    let currentCandidates = []; 
+
+    const SLOTS_COUNT = 15; 
+    let board = Array(SLOTS_COUNT).fill(null).map(() => []);
+
+    let talents = [];
+    let talentCounter = 1;
+
+    let currentMode = 'idle';
+    let selectedBuildType = null;
+    let selectedTalentId = null;
+
+    let storyStatus = { prologue: false, chapter1: false, chapter2: false, chapter3: false, ending: false };
+
+    // UI elements
+    const elResFunding = document.getElementById('resFunding');
+    const elResFood = document.getElementById('resFood');
+    const elResInspiration = document.getElementById('resInspiration');
+    const elResGene = document.getElementById('resGene');
+    const elGameBoard = document.getElementById('gameBoard');
+    const elAiMessage = document.getElementById('aiMessage');
+    const elModeIndicator = document.getElementById('modeIndicator');
+    const elBtnCancel = document.getElementById('btnCancel');
+    const elGameMonth = document.getElementById('gameMonth');
+    const elMonthProgress = document.getElementById('monthProgress');
+
+    // 科技樹互動變數
+    let techCam = { panX: 0, panY: 0, scale: 1, isDragging: false, startX: 0, startY: 0 };
+
+    window.setSpeed = setSpeed;
+    window.setMode = setMode;
+    window.cancelMode = cancelMode;
+    window.handleSlotClick = handleSlotClick;
+    window.handleRoomClick = handleRoomClick;
+
+    // ==========================================
+    // 開始畫面與初始化
+    // ==========================================
+    // ⚙️ 安全封裝事件監聽
+    function initGameEvents() {
+      const btnStart = document.getElementById('btnStart');
+      if (btnStart) {
+        btnStart.addEventListener('click', () => {
+          document.getElementById('startScreen').classList.add('hidden');
+          document.getElementById('gameUI').classList.remove('hidden');
+
+          initBoard();
+          recruitTalentDirect("林院士");
+          recruitTalentDirect("高博士");
+          
+          generateCandidates(); 
+          updateUI();
+          
+          startVnStory('prologue');
+          storyStatus['prologue'] = true;
+          
+          setInterval(gameStep, TICK_INTERVAL);
+        });
+      }
+
+      const btnSettings = document.getElementById('btnSettings');
+      if (btnSettings) {
+        btnSettings.addEventListener('click', () => toggleSettingsModal(true));
+      }
+
+      const btnExit = document.getElementById('btnExit');
+      if (btnExit) {
+        btnExit.addEventListener('click', () => toggleExitModal(true));
+      }
+
+      const prEl = document.getElementById('particleRange');
+      if (prEl) {
+        prEl.addEventListener('input', (e) => adjustParticles(parseInt(e.target.value)));
+      }
+
+      const techScrollArea = document.getElementById('techScrollArea');
+      if (techScrollArea) {
+        techScrollArea.addEventListener('mousedown', (e) => {
+          if (e.target.closest('button')) return;
+          techCam.isDragging = true;
+          techCam.startX = e.clientX - techCam.panX;
+          techCam.startY = e.clientY - techCam.panY;
+        });
+
+        techScrollArea.addEventListener('wheel', (e) => {
+          e.preventDefault();
+          
+          const rect = techScrollArea.getBoundingClientRect();
+          const mouseX = e.clientX - rect.left;
+          const mouseY = e.clientY - rect.top;
+
+          const canvasX = (mouseX - techCam.panX) / techCam.scale;
+          const canvasY = (mouseY - techCam.panY) / techCam.scale;
+
+          const zoomSpeed = 0.05;
+          const delta = e.deltaY < 0 ? zoomSpeed : -zoomSpeed;
+          
+          let nextScale = techCam.scale + delta;
+          if(isNaN(nextScale)) nextScale = 1;
+
+          techCam.scale = Math.max(0.2, Math.min(1.5, nextScale));
+
+          techCam.panX = mouseX - canvasX * techCam.scale;
+          techCam.panY = mouseY - canvasY * techCam.scale;
+
+          updateTechCam();
+        }, { passive: false });
+      }
+    }
+
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', initGameEvents);
+    } else {
+      initGameEvents();
+    }
+
+    function initBoard() {
+      const centerIndex = Math.floor(SLOTS_COUNT / 2);
+      board[centerIndex].push({ id: 'room_hq', type: 'living', level: 1, workers: [], animState: 'build' });
+      renderBoard();
+    }
+
+    function checkStoryTriggers() {
+      if (currentMonth >= 5 && !storyStatus.chapter1) {
+        storyStatus.chapter1 = true;
+        startVnStory('chapter1');
+      }
+      if (currentMonth >= 10 && !storyStatus.chapter2) {
+        storyStatus.chapter2 = true;
+        startVnStory('chapter2');
+      }
+      const techPlant3 = techNodes.find(t => t.id === 'tech_plant_3');
+      if (techPlant3 && techPlant3.unlocked && !storyStatus.chapter3) {
+        storyStatus.chapter3 = true;
+        startVnStory('chapter3');
+      }
+    }
+
+    window.confirmVow = function() {
+      const name = document.getElementById('vowName').value.trim();
+      const path = document.getElementById('vowPath').value;
+      if (!name) { alert("請輸入您的姓名以確立您的創科誓言！"); return; }
+      document.getElementById('vowModal').classList.add('hidden');
+      endGame(name, path);
+    };
+
+    // ==========================================
+    // 人才招募面板
+    // ==========================================
+    window.toggleRecruitModal = function(show) {
+      const modal = document.getElementById('recruitModal');
+      if (show) { 
+        modal.classList.remove('hidden'); 
+        renderRecruitModalContent(); 
+        
+        // 移除紅點提示
+        const recruitBadge = document.getElementById('recruitBadge');
+        if (recruitBadge) recruitBadge.classList.add('hidden');
+        const btnRecruit = document.getElementById('btnRecruitMenu');
+        if (btnRecruit) {
+          btnRecruit.classList.remove('animate-pulse');
+          btnRecruit.style.borderColor = '';
+        }
+      } 
+      else { 
+        modal.classList.add('hidden'); 
+      }
+    };
+
+    function renderRecruitModalContent() {
+      const container = document.getElementById('modalCandidatesContent');
+      if(!container) return;
+      container.innerHTML = '';
+
+      if (currentCandidates.length === 0) {
+        container.innerHTML = `
+          <div class="w-full flex flex-col items-center justify-center text-slate-500 py-12">
+            <span class="text-5xl mb-2">📡</span>
+            <p class="font-bold text-lg">目前候選人才庫已空</p>
+            <p class="text-xs text-slate-400 mt-1">下個月開始時將自動重新整理全新的特派專家名冊！</p>
+          </div>
+        `;
+      } else {
+        currentCandidates.forEach(cand => {
+            const card = document.createElement('div');
+            card.className = "min-w-[220px] h-[280px] bg-slate-50 border-2 border-slate-300 rounded-3xl p-5 flex flex-col items-center justify-between shrink-0 hover:border-emerald-500 hover:bg-emerald-50/20 transition-all shadow-md group relative";
+            card.innerHTML = `
+                <div class="w-20 h-24 mb-2 mt-2 transition-transform hover:scale-110 drop-shadow-md" style="color: ${cand.color}">
+                  <svg viewBox="0 0 24 32" class="w-full h-full" fill="currentColor">
+                    <circle cx="12" cy="5" r="4.5" />
+                    ${cand.accessory === 2 ? '<circle cx="12" cy="-0.5" r="1.5" fill="currentColor" /><rect x="11.5" y="1" width="1" height="3" fill="currentColor" />' : ''}
+                    <rect x="10.5" y="3.5" width="4" height="2" rx="1" fill="${cand.visor}" opacity="0.9" />
+                    <rect x="12" y="11" width="3.5" height="8" rx="1.5" />
+                    <rect x="12" y="20" width="3" height="9" rx="1.5" />
+                    ${cand.accessory === 1 ? '<rect x="4" y="10" width="5" height="9" rx="1.5" fill="currentColor" opacity="0.75" />' : ''}
+                    <rect x="8" y="10" width="8" height="11" rx="2.5" />
+                    <rect x="9" y="20" width="3" height="9" rx="1.5" />
+                    <rect x="8.5" y="11" width="3.5" height="8" rx="1.5" />
+                  </svg>
+                </div>
+                <div class="font-black text-slate-800 text-xl tracking-wide w-full text-center border-b border-slate-200 pb-2">${cand.name}</div>
+                <div class="text-xs text-slate-600 font-bold bg-white px-3 py-2 rounded-lg border border-slate-200 mt-2 w-full text-center shadow-inner flex flex-col gap-0.5">
+                    <div>經費: <span class="text-yellow-600 font-mono-num font-extrabold">${cand.costFunding} 💰</span></div>
+                    <div>糧草: <span class="text-orange-500 font-mono-num font-extrabold">${cand.costFood} 🌾</span></div>
+                </div>
+                <button class="w-full mt-3 bg-emerald-600 hover:bg-emerald-500 text-white py-2.5 rounded-xl font-bold transition-all shadow-md border-b-4 border-emerald-800 active:translate-y-1 active:border-b-0 text-md tracking-widest" onclick="buyTalent('${cand.id}')">聘用入隊</button>
+            `;
+            container.appendChild(card);
+        });
+      }
+
+      const limitLabel = document.getElementById('modalLimitLabel');
+      if (limitLabel) limitLabel.textContent = `本月剩餘招募: ${MAX_RECRUITS_PER_MONTH - recruitsThisMonth}/5`;
+    }
+
+    // ==========================================
+    // 時間流速與主循環
+    // ==========================================
+    function setSpeed(speed) {
+      gameSpeed = speed;
+      document.getElementById('btnSpeed0').className = `px-2.5 py-1 text-xs font-bold rounded ${speed === 0 ? 'bg-red-500/15 text-red-600 border border-red-500/25' : 'text-slate-600 hover:bg-slate-100'} transition-colors`;
+      document.getElementById('btnSpeed1').className = `px-2.5 py-1 text-xs font-bold rounded ${speed === 1 ? 'bg-green-500/15 text-green-800 border border-green-500/25' : 'text-slate-600 hover:bg-slate-100'} transition-colors`;
+      document.getElementById('btnSpeed2').className = `px-2.5 py-1 text-xs font-bold rounded ${speed === 2 ? 'bg-yellow-500/15 text-yellow-700 border border-yellow-500/25' : 'text-slate-600 hover:bg-slate-100'} transition-colors`;
+      
+      const btnSpeed5 = document.getElementById('btnSpeed5');
+      if (btnSpeed5 && !btnSpeed5.classList.contains('hidden')) {
+        btnSpeed5.className = `px-2.5 py-1 text-xs font-bold rounded ${speed === 5 ? 'bg-purple-500/15 text-purple-700 border border-purple-500/25 animate-pulse' : 'text-purple-600 hover:bg-purple-50 border border-purple-200'} transition-colors transition-all`;
+      }
+
+      const bGradient = document.getElementById('bgGradient');
+      if (speed === 0) { bGradient.style.animationPlayState = 'paused'; } 
+      else { bGradient.style.animationPlayState = 'running'; }
+    }
+
+    let accumulativeSec = 0;
+    function gameStep() {
+      if (gameSpeed === 0 || gameWon) return; 
+
+      let stepSpeed = gameSpeed;
+      monthTickProgress += (100 / 1800) * stepSpeed; 
+      if (monthTickProgress >= 100) {
+        monthTickProgress = 0;
+        nextMonth();
+      }
+      elMonthProgress.style.width = Math.min(100, monthTickProgress) + '%';
+
+      accumulativeSec += stepSpeed;
+      if (accumulativeSec >= 10) {
+        accumulativeSec = 0;
+        calculateResources();
+      }
+    }
+
+    function triggerMonthTransition(monthNum) {
+      const overlay = document.getElementById('monthTransitionOverlay');
+      const content = document.getElementById('monthTransitionContent');
+      const line = document.getElementById('monthTransitionLine');
+      const numEl = document.getElementById('monthTransitionNum');
+      
+      if(!overlay) return;
+      
+      numEl.textContent = monthNum;
+      
+      // Reset animations
+      overlay.classList.remove('anim-month-flash');
+      content.classList.remove('anim-month-content');
+      line.classList.remove('anim-month-line');
+      
+      // Force DOM reflow to restart animations
+      void overlay.offsetWidth;
+      
+      // Add animation classes
+      overlay.classList.add('anim-month-flash');
+      content.classList.add('anim-month-content');
+      line.classList.add('anim-month-line');
+    }
+
+    function nextMonth() {
+      currentMonth++;
+      
+      // 20 個月為時間上限。若未完成終極目標即宣告失敗。
+      if (currentMonth > 15 && !gameWon) { 
+        prepareEndingScript(false);
+        startVnStory('ending');
+        storyStatus.ending = true;
+        return; 
+      }
+      
+      // 🚀 觸發全螢幕月份更迭動畫
+      triggerMonthTransition(currentMonth);
+      
+      recruitsThisMonth = 0; 
+      generateCandidates(); 
+      elGameMonth.textContent = (currentMonth < 10 ? '0' + currentMonth : currentMonth) + ' / 15';
+      
+      // 🚀 檢查是否已經解鎖 5x
+      const speedTech = techNodes.find(t => t.id === 'tech_speed');
+      if (speedTech && speedTech.unlocked) {
+        const btnSpeed5 = document.getElementById('btnSpeed5');
+        if (btnSpeed5) btnSpeed5.classList.remove('hidden');
+      }
+
+      // 月份動畫與紅點提醒
+      const recruitBadge = document.getElementById('recruitBadge');
+      if (recruitBadge) recruitBadge.classList.remove('hidden');
+      const btnRecruit = document.getElementById('btnRecruitMenu');
+      if (btnRecruit) {
+        btnRecruit.classList.add('animate-pulse');
+        btnRecruit.style.borderColor = '#ef4444';
+      }
+      const monthBox = document.getElementById('uiMonthBox');
+      if (monthBox) {
+        monthBox.classList.add('ring-4', 'ring-green-400', 'transition-all');
+        setTimeout(() => monthBox.classList.remove('ring-4', 'ring-green-400'), 1500);
+      }
+
+      checkStoryTriggers();
+      updateDynamicAIDialogue();
+      renderRecruitModalContent();
+      updateEnvironmentVars(); 
+    }
+
+    function updateDynamicAIDialogue() {
+      if (currentMonth === 1) { aiSpeak(`【第 1 個月】Boss，新團隊已集結。請先「招募人才」並拖曳他們至耕地艙 (🌾) 以累積研究糧草與靈感！`); } 
+      else if (currentMonth === 5) { aiSpeak(`【第 5 個月】時間不等人！持續解鎖「全息科技樹」，我們需要大量的資金(💰)和糧食(🌾)。`); } 
+      else if (currentMonth === 10) { aiSpeak(`【第 10 個月】您解鎖「基因生態艙」了嗎？那是獲取【罕見基因(🧬)】的關鍵途徑！`); } 
+      else if (currentMonth === 11) { aiSpeak(`【第 11 個月】距離 15 個月限期已近！請全力儲備 4 種資源，攻克樹底的【終極三系配套】！`); } 
+    }
+
+    // ==========================================
+    // 資源物理運算機制
+    // ==========================================
+    function calculateResources() {
+      let dFunding = 0; let dFood = 0; let dInspiration = 0; let dGene = 0;
+      
+      const hasSoilBoost = techNodes.find(t => t.id === 'tech_plant_1')?.unlocked;
+      const hasSoilBoost2 = techNodes.find(t => t.id === 'tech_plant_1a')?.unlocked;
+      const hasSoilBoost3 = techNodes.find(t => t.id === 'tech_plant_3a')?.unlocked;
+      const hasEcoBoost1 = techNodes.find(t => t.id === 'tech_plant_2a')?.unlocked;
+      const hasEcoBoost2 = techNodes.find(t => t.id === 'tech_plant_2b')?.unlocked;
+
+      const hasEnergyBoost = techNodes.find(t => t.id === 'tech_room_1')?.unlocked;
+      const hasLivingBoost = techNodes.find(t => t.id === 'tech_room_1a')?.unlocked;
+      const hasWaterBoost1 = techNodes.find(t => t.id === 'tech_room_2a')?.unlocked;
+      const hasWaterBoost2 = techNodes.find(t => t.id === 'tech_room_2b')?.unlocked;
+      const hasDoubleEfficiency = techNodes.find(t => t.id === 'tech_room_3')?.unlocked;
+      const hasSuperEfficiency = techNodes.find(t => t.id === 'tech_room_4')?.unlocked;
+
+      for (let s = 0; s < SLOTS_COUNT; s++) {
+        for (let r = 0; r < board[s].length; r++) {
+          const room = board[s][r];
+          const rData = roomTypes[room.type];
+          
+          const workerCount = room.workers.length;
+          if (workerCount === 0 && room.type !== 'living') continue; 
+
+          let effMult = 1.0;
+          if (hasDoubleEfficiency) effMult = 2.0;
+          if (hasSuperEfficiency) effMult = 3.0;
+
+          if (room.type === 'soil') {
+            let baseFood = rData.output.food * workerCount * effMult;
+            if (hasSoilBoost) baseFood *= 1.4;
+            if (hasSoilBoost2) baseFood *= 1.5;
+            if (hasSoilBoost3) baseFood *= 1.5;
+            dFood += baseFood;
+            dFunding += rData.output.funding * workerCount * effMult;
+          } else if (room.type === 'energy') {
+            let baseFunding = rData.output.funding * workerCount * effMult;
+            if (hasEnergyBoost) baseFunding *= 1.5;
+            dFunding += baseFunding;
+          } else if (room.type === 'research') {
+            dFunding += rData.output.funding * workerCount * effMult;
+            dInspiration += rData.output.inspiration * workerCount * effMult;
+          } else if (room.type === 'water') {
+            let baseFood = rData.output.food * workerCount * effMult;
+            if (hasWaterBoost1) baseFood *= 1.5;
+            dFood += baseFood;
+            
+            if (hasWaterBoost2) {
+              dFunding += 10 * workerCount * effMult; // 不再消耗經費，並開始生產
+            } else {
+              dFunding += rData.output.funding; 
+            }
+          } else if (room.type === 'eco') {
+            let baseFood = rData.output.food * workerCount * effMult;
+            if (hasSoilBoost3) baseFood *= 1.5;
+            dFood += baseFood;
+            
+            dInspiration += rData.output.inspiration * workerCount * effMult;
+            dFunding += rData.output.funding; 
+            
+            let baseGene = rData.output.gene * workerCount * effMult;
+            if (hasEcoBoost1) baseGene *= 1.4;
+            if (hasEcoBoost2) baseGene *= 1.5;
+            dGene += baseGene;
+          } else if (room.type === 'living') {
+            if (!hasLivingBoost) {
+              dFunding += rData.output.funding; 
+              dFood += rData.output.food; 
+            }
+          }
+        }
+      }
+
+      resources.funding += dFunding;
+      resources.food += dFood;
+      resources.inspiration += dInspiration;
+      resources.gene += dGene;
+
+      if (resources.funding < 0) resources.funding = 0;
+      if (resources.food < 0) resources.food = 0;
+      if (resources.inspiration < 0) resources.inspiration = 0;
+      if (resources.gene < 0) resources.gene = 0;
+
+      updateUI();
+    }
+
+    // 隨著遊戲時長進行大氣背景轉變
+    function updateEnvironmentVars() {
+      const p = Math.min(1.0, currentMonth / 15);
+      document.documentElement.style.setProperty('--env-progress', p);
+      const bgGrad = document.getElementById('bgGradient');
+      if (p > 0.5) {
+        document.body.classList.add('is-green');
+        bgGrad.style.background = `radial-gradient(circle at 50% 30%, var(--sky-glow-green) 0%, var(--sky-base-green) 70%)`;
+        document.getElementById('groundLine').style.background = `linear-gradient(to bottom, rgba(255, 255, 255, 0.4) 0px, rgba(255, 255, 255, 0.95) 4px, var(--soil-top-green) 10px, var(--soil-bottom-green) 120px, var(--soil-bottom-green) 100%)`;
+        document.getElementById('groundLine').style.borderTopColor = "#22c55e";
+      } else {
+        document.body.classList.remove('is-green');
+        bgGrad.style.background = `radial-gradient(circle at 50% 30%, var(--sky-glow-dry) 0%, var(--sky-base-dry) 70%)`;
+        document.getElementById('groundLine').style.background = `linear-gradient(to bottom, rgba(251, 191, 36, 0.3) 0px, rgba(255, 255, 255, 0.95) 4px, var(--soil-top-dry) 10px, var(--soil-bottom-dry) 120px, var(--soil-bottom-dry) 100%)`;
+        document.getElementById('groundLine').style.borderTopColor = "#d97706";
+      }
+    }
+
+    function updateUI() {
+      if(elResFunding) elResFunding.textContent = Math.floor(resources.funding);
+      if(elResFood) elResFood.textContent = Math.floor(resources.food);
+      if(elResInspiration) elResInspiration.textContent = Math.floor(resources.inspiration);
+      if(elResGene) elResGene.textContent = Math.floor(resources.gene);
+      
+      const mdFunding = document.getElementById('modalResFunding');
+      const mdFood = document.getElementById('modalResFood');
+      const mdInsp = document.getElementById('modalResInspiration');
+      const mdGene = document.getElementById('modalResGene');
+      
+      if(mdFunding) {
+         mdFunding.textContent = Math.floor(resources.funding);
+         mdFood.textContent = Math.floor(resources.food);
+         mdInsp.textContent = Math.floor(resources.inspiration);
+         mdGene.textContent = Math.floor(resources.gene);
+      }
+    }
+
+    function aiSpeak(text) { 
+      const msgEl = document.getElementById('aiMessage');
+      if(msgEl) msgEl.innerHTML = text; 
+    }
+
+    // ==========================================
+    // 拖曳調配邏輯
+    // ==========================================
+    window.handleDragStart = function(e, talentId) {
+      e.dataTransfer.setData('text/plain', talentId);
+      e.dataTransfer.effectAllowed = 'move';
+      setTimeout(() => e.target.style.opacity = '0.5', 0);
+    };
+
+    window.handleDragEnd = function(e) { e.target.style.opacity = '1'; };
+    window.handleDragOver = function(e) { e.preventDefault(); e.currentTarget.classList.add('drag-over'); };
+    window.handleDragLeave = function(e) { e.currentTarget.classList.remove('drag-over'); };
+    window.handleDrop = function(e, s, r) {
+      e.preventDefault();
+      e.currentTarget.classList.remove('drag-over');
+      const talentId = e.dataTransfer.getData('text/plain');
+      if (talentId) assignTalentToRoom(talentId, s, r);
+    };
+
+    window.assignTalentToRoom = function(talentId, s, r) {
+      const room = board[s][r];
+      if (room.workers.length >= 3 && !room.workers.includes(talentId)) {
+        aiSpeak('<span class="text-yellow-600 font-semibold">調配失敗：該科研艙駐紮容量已飽滿 (最大 3 人)！</span>');
+        return;
+      }
+      const talent = talents.find(t => t.id === talentId);
+      if (!talent || talent.assignedTo === room.id) return;
+
+      if (talent.assignedTo) {
+        for (let i = 0; i < SLOTS_COUNT; i++) {
+          for (let j = 0; j < board[i].length; j++) {
+            board[i][j].workers = board[i][j].workers.filter(id => id !== talent.id);
+          }
+        }
+      }
+
+      talent.assignedTo = room.id;
+      room.workers.push(talent.id);
+      room.animState = 'arrived';
+
+      renderBoard();
+      renderRecruitModalContent();
+      const rName = room.id === 'room_hq' ? '核心總部' : roomTypes[room.type].name;
+      aiSpeak(`調配成功！[${talent.name}] 已進駐至 ${rName}，正在全力運作中！`);
+    };
+
+    // ==========================================
+    // 運營模式調度 (建造、拆除、解僱)
+    // ==========================================
+    function setMode(mode, type = null) {
+      currentMode = mode;
+      selectedBuildType = type;
+      selectedTalentId = null;
+
+      document.querySelectorAll('.btn-game').forEach(b => b.classList.remove('active-mode'));
+      document.body.className = `text-slate-800 text-sm mode-${mode}`;
+      
+      const p = Math.min(1.0, currentMonth / 15);
+      if (p > 0.5) document.body.classList.add('is-green');
+
+      if (mode === 'build') {
+        if (type === 'water' && !techNodes.find(t => t.id === 'tech_plant_2')?.unlocked) {
+          aiSpeak('<span class="text-red-500 font-bold">大氣凝結艙需要先在科技樹解鎖「雄性不育株尋覓」！</span>'); cancelMode(); return;
+        }
+        if (type === 'eco' && !techNodes.find(t => t.id === 'tech_room_2')?.unlocked) {
+          aiSpeak('<span class="text-red-500 font-bold">基因生態艙需要先在科技樹解鎖「封閉大氣微氣候」！</span>'); cancelMode(); return;
+        }
+
+        const cost = roomTypes[type].cost;
+        const bBtn = document.getElementById(`btnBuild_${type}`);
+        if (bBtn) bBtn.classList.add('active-mode');
+        
+        let costLabel = `${cost.funding} 💰`;
+        if (cost.food > 0) costLabel += ` / ${cost.food} 🌾`;
+        
+        elModeIndicator.innerHTML = `<span class="text-green-600 font-bold drop-shadow-sm">【建造模式】</span><span class="text-sm text-slate-800 font-semibold">${roomTypes[type].name}</span> <span class="text-[10px] text-slate-400">(${costLabel}) | 右鍵取消</span>`;
+        aiSpeak(`建造藍圖已激活：${roomTypes[type].name}。點擊地面空位進行放置。`);
+      } else if (mode === 'demolish') {
+        document.getElementById('btnModeDemolish').classList.add('active-mode');
+        elModeIndicator.innerHTML = `<span class="text-red-500 font-bold drop-shadow-sm">【拆除模式】</span><span class="text-xs text-red-500 font-semibold">單擊設施撤除</span> <span class="text-[10px] text-slate-400">| 右鍵取消</span>`;
+        aiSpeak('【安全警報】拆除模式。只能自頂層依次向下撤回。');
+      } else if (mode === 'fire') {
+        document.getElementById('btnModeFire').classList.add('active-mode');
+        elModeIndicator.innerHTML = `<span class="text-red-600 font-bold drop-shadow-sm">【裁撤模式】</span><span class="text-xs text-red-500 font-semibold">單擊地圖上設施內的科研人員解雇</span> <span class="text-[10px] text-slate-400">| 右鍵取消</span>`;
+        aiSpeak('聯邦人事科：已開啟裁撤權限，請直接單擊地圖上設施內的科研人員來解除聘雇合同。');
+      }
+
+      if (mode !== 'idle') { elBtnCancel.classList.remove('hidden'); }
+    }
+
+    function cancelMode() {
+      currentMode = 'idle';
+      selectedBuildType = null;
+      selectedTalentId = null;
+      document.querySelectorAll('.btn-game').forEach(b => b.classList.remove('active-mode'));
+      document.body.className = 'text-slate-800 text-sm';
+      
+      const p = Math.min(1.0, currentMonth / 15);
+      if (p > 0.5) document.body.classList.add('is-green');
+      
+      elModeIndicator.innerHTML = `<span class="tracking-widest uppercase text-xs">指揮端已部署</span><span class="text-[10px] text-slate-500 font-normal mt-1">選取上方建築，或開啟右方招募面板調配。</span>`;
+      elBtnCancel.classList.add('hidden');
+      renderRecruitModalContent();
+      aiSpeak('指令已安全終止。您可以隨時拖曳人員進行調度喔！');
+    }
+
+    // ==========================================
+    // 🛑 放棄任務/退出 邏輯
+    // ==========================================
+    window.toggleExitModal = function(show) {
+      const modal = document.getElementById('modalExit');
+      if (!modal) return;
+      if (show) {
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+      } else {
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+      }
+    };
+
+    window.confirmExit = function() {
+      document.body.innerHTML = `
+        <div style="display:flex; flex-direction:column; align-items:center; justify-content:center; height:100vh; background:#000; color:#ef4444; font-family:'Share Tech Mono', monospace;">
+          <h1 style="font-size:3rem; margin-bottom: 20px; text-shadow: 0 0 10px #dc2626;">SYSTEM TERMINATED</h1>
+          <p style="font-size:1.2rem; max-width: 600px; text-align:center; line-height:1.6; color:#fca5a5;">
+            地球復育計劃已被迫終止。<br>如果我們放棄了，這片土地的未來又該交給誰？
+          </p>
+        </div>`;
+    };
+
+    // ==========================================
+    // 🏠 Home 按鈕單次安全防誤觸確認邏輯
+    // ==========================================
+    window.showHomeConfirm = function() {
+      setSpeed(0); // 暫停遊戲時間
+      const modal = document.getElementById('modalHomeConfirm');
+      if(modal) {
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+      }
+    };
+    
+    window.handleHomeConfirmNext = function() {
+      window.closeHomeConfirm();
+      window.restartGame(); // 執行自訂的無重載重置返回首頁
+    };
+    
+    window.closeHomeConfirm = function() {
+      const modal = document.getElementById('modalHomeConfirm');
+      if(modal) {
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+      }
+      setSpeed(1); // 恢復時間流動
+    };
+
+    // ==========================================
+    // 渲染地圖與槽位 
+    // ==========================================
+    function renderBoard() {
+      elGameBoard.innerHTML = '';
+      
+      for (let s = 0; s < SLOTS_COUNT; s++) {
+        const slotDiv = document.createElement('div');
+        slotDiv.className = 'flex flex-col-reverse w-28 gap-1.5 items-center pb-2';
+        slotDiv.onclick = () => handleSlotClick(s);
+        
+        for (let r = 0; r < board[s].length; r++) {
+          const room = board[s][r];
+          const roomData = room.id === 'room_hq' ? {name: '基地總部🏢', icon:'', produces: '🛏️'} : roomTypes[room.type];
+          
+          const div = document.createElement('div');
+          let roomThemeClass = "room-base border-2 border-gray-600 bg-slate-800";
+          
+          if (room.id !== 'room_hq') {
+            switch(room.type) {
+              case 'soil':     roomThemeClass = "room-base room-soil border-2"; break;
+              case 'energy':   roomThemeClass = "room-base room-energy border-2"; break;
+              case 'water':    roomThemeClass = "room-base room-water border-2"; break;
+              case 'eco':      roomThemeClass = "room-base room-eco border-2"; break;
+              case 'research': roomThemeClass = "room-base room-research border-2"; break;
+              case 'living':   roomThemeClass = "room-base room-living border-2"; break;
+            }
+          }
+
+          let stateClass = '';
+          if (room.animState === 'build') { stateClass = 'anim-build'; } 
+          else if (room.animState === 'arrived') { stateClass = 'anim-arrived'; }
+          room.animState = null;
+
+          div.className = `w-full h-24 rounded flex flex-col items-center justify-center cursor-pointer ${roomThemeClass} ${stateClass} relative`;
+          div.ondragover = window.handleDragOver;
+          div.ondragleave = window.handleDragLeave;
+          div.ondrop = (e) => window.handleDrop(e, s, r);
+          div.onclick = (e) => { e.stopPropagation(); handleRoomClick(s, r); };
+
+          let workersHtml = '';
+          if (room.workers.length > 0) {
+            workersHtml = `<div class="absolute inset-0 z-20 pointer-events-none">`;
+            const now = Date.now(); 
+            
+            room.workers.forEach((wId, index) => {
+              const t = talents.find(x => x.id === wId);
+              const tName = t ? t.name : '科研專家';
+              const tColor = t ? t.color : '#3b82f6';
+              const tVisor = t ? t.visor : '#ffffff';
+              const tAcc = t ? t.accessory : 0;
+              
+              const walkClass = `anim-walk-${(index % 3) + 1}`;
+              const startLeft = 10 + (index * 32);
+
+              const walkDurations = [6000, 7500, 5500];
+              const delayWalk = -(now % walkDurations[index % 3]);
+              const delayBob = -(now % 450);
+              const delaySwing = -(now % 700);
+
+              workersHtml += `
+                <div class="absolute bottom-1.5 pointer-events-auto" style="left: ${startLeft}px;">
+                  <div draggable="true" ondragstart="window.handleDragStart(event, '${wId}')" ondragend="window.handleDragEnd(event)" 
+                       onclick="window.handleTalentMapClick(event, '${wId}')"
+                       class="w-6 h-6 cursor-grab active:cursor-grabbing ${walkClass}" 
+                       style="animation-delay: ${delayWalk}ms; color: ${tColor};"
+                       title="${tName} (按住以拖曳移崗)">
+                    <div class="w-full h-full anim-bob hover:brightness-125 hover:scale-125 transition-transform origin-bottom" style="animation-delay: ${delayBob}ms;">
+                      <svg viewBox="0 0 24 32" class="w-full h-full drop-shadow-[0_2px_4px_rgba(0,0,0,0.6)]" fill="currentColor">
+                        <!-- 頭部 -->
+                        <circle cx="12" cy="5" r="4.5" />
+                        ${tAcc === 2 ? '<circle cx="12" cy="-0.5" r="1.5" fill="currentColor" /><rect x="11.5" y="1" width="1" height="3" fill="currentColor" />' : ''}
+                        <rect x="10.5" y="3.5" width="4" height="2" rx="1" fill="${tVisor}" opacity="0.9" />
+                        <!-- 背景手臂與腿 (擺動B) -->
+                        <rect x="12" y="11" width="3.5" height="8" rx="1.5" class="limb-arm-b" style="animation-delay: ${delaySwing}ms;" />
+                        <rect x="12" y="20" width="3" height="9" rx="1.5" class="limb-leg-b" style="animation-delay: ${delaySwing}ms;" />
+                        <!-- 裝備 -->
+                        ${tAcc === 1 ? '<rect x="4" y="10" width="5" height="9" rx="1.5" fill="currentColor" opacity="0.75" />' : ''}
+                        <!-- 身體 -->
+                        <rect x="8" y="10" width="8" height="11" rx="2.5" />
+                        <!-- 前景腿 (擺動B 反向) 與手臂 (擺動F) -->
+                        <rect x="9" y="20" width="3" height="9" rx="1.5" class="limb-leg-f" style="animation-delay: ${delaySwing}ms;" />
+                        <rect x="8.5" y="11" width="3.5" height="8" rx="1.5" class="limb-arm-f" style="animation-delay: ${delaySwing}ms;" />
+                      </svg>
+                    </div>
+                  </div>
+                </div>`;
+            });
+            workersHtml += `</div>`;
+          }
+
+          div.innerHTML = `
+            <div class="pattern-overlay"></div>
+            <div class="absolute top-1 left-1 text-[10px] font-bold text-white bg-blue-600/80 px-1 py-0.5 rounded z-10 flex items-center gap-0.5 shadow-sm border border-blue-400/50">
+              <span class="text-[8px]">👤</span>${room.workers.length}/3
+            </div>
+            <div class="text-2xl mb-0.5 z-10 drop-shadow-md pointer-events-none">${roomData.icon}</div>
+            <div class="text-[11px] font-bold tracking-wider text-center z-10 drop-shadow bg-white/90 px-1 rounded-sm max-w-[95%] overflow-hidden truncate pointer-events-none text-slate-800">${roomData.name}</div>
+            ${workersHtml}
+            <div class="absolute top-1 right-1 text-[8px] text-green-600 font-bold z-10 pointer-events-none bg-white/90 px-1 rounded shadow-sm border border-slate-200">
+              ${room.workers.length === 0 && room.type !== 'living' ? '⏹️ 停產' : '▶️ 運作'}
+            </div>
+          `;
+          slotDiv.appendChild(div);
+        }
+
+        // 🚀 修復：只有小於3樓時才顯示 `+`
+        if (board[s].length < 3) {
+          const emptyIndicator = document.createElement('div');
+          emptyIndicator.className = 'w-22 h-10 rounded flex items-center justify-center text-slate-400 slot-empty-indicator cursor-pointer mt-0.5';
+          emptyIndicator.innerHTML = '<span class="text-sm font-bold">+</span>';
+          slotDiv.appendChild(emptyIndicator);
+        }
+
+        elGameBoard.appendChild(slotDiv);
+      }
+    }
+
+    function handleSlotClick(slotIndex) {
+      if (currentMode === 'build' && selectedBuildType) {
+        const rData = roomTypes[selectedBuildType];
+        
+        if (board[slotIndex].length >= 3) {
+          aiSpeak('<span class="text-yellow-600 font-semibold">地表承重警告：該區段研究所承重限額已滿 (最高 3 層)！</span>');
+          return;
+        }
+
+        if (resources.funding >= rData.cost.funding && resources.food >= rData.cost.food) {
+          resources.funding -= rData.cost.funding;
+          resources.food -= rData.cost.food;
+          
+          board[slotIndex].push({
+            id: 'room_' + Date.now(),
+            type: selectedBuildType,
+            level: 1,
+            workers: [],
+            animState: 'build'
+          });
+          
+          updateUI();
+          renderBoard();
+          aiSpeak(`構築成功：${rData.name}。請拖曳人員入駐以啟動生產。`);
+        } else {
+          aiSpeak('<span class="text-red-500 font-bold">資源不足：需要 ' + rData.cost.funding + ' 💰 / ' + rData.cost.food + ' 🌾！</span>');
+        }
+      }
+    }
+
+    function handleRoomClick(slotIndex, roomIndex) {
+      const room = board[slotIndex][roomIndex];
+
+      if (currentMode === 'demolish') {
+        if (room.id === 'room_hq') {
+          aiSpeak('<span class="text-red-500 font-bold">基地核心總部無法拆除！</span>');
+          return;
+        }
+        if (roomIndex < board[slotIndex].length - 1) {
+          aiSpeak('<span class="text-yellow-600 font-semibold">請先撤除上層建築！</span>');
+          return;
+        }
+
+        let availableSpace = 0;
+        let livingRooms = [];
+        
+        for (let s = 0; s < SLOTS_COUNT; s++) {
+          for (let r = 0; r < board[s].length; r++) {
+            const targetRoom = board[s][r];
+            if (targetRoom.id !== room.id && (targetRoom.type === 'living' || targetRoom.id === 'room_hq')) {
+              const freeSpace = 3 - targetRoom.workers.length;
+              if (freeSpace > 0) {
+                availableSpace += freeSpace;
+                livingRooms.push(targetRoom);
+              }
+            }
+          }
+        }
+
+        if (room.workers.length > availableSpace) {
+          aiSpeak('<span class="text-red-500 font-bold">撤除失敗：所有宿舍床位已滿，無法安置撤離的科研人員！請先建造更多「人員居住艙 (🏠)」。</span>');
+          return;
+        }
+
+        room.workers.forEach(tId => {
+          const t = talents.find(x => x.id === tId);
+          if (t) {
+            const targetRoom = livingRooms.find(lr => lr.workers.length < 3);
+            if (targetRoom) {
+              t.assignedTo = targetRoom.id;
+              targetRoom.workers.push(t.id);
+              targetRoom.animState = 'arrived';
+            }
+          }
+        });
+
+        board[slotIndex].pop();
+        renderBoard();
+        renderRecruitModalContent();
+        aiSpeak('建築安全撤除，撤離的科研人員已成功返回宿舍休息。');
+      } 
+      else {
+        const rName = room.id === 'room_hq' ? '基地總部' : roomTypes[room.type].name;
+        let capacityInfo = "";
+        if (room.type === 'living' || room.id === 'room_hq') {
+          capacityInfo = `<br>目前床位佔用: ${room.workers.length} / 3 人 (居住上限為 3)`;
+        } else {
+          capacityInfo = `<br>在崗研究員: ${room.workers.length} / 3 人`;
+        }
+        aiSpeak(`【${rName}】${capacityInfo}<br>${room.workers.length === 0 && room.type !== 'living' ? '<span class="text-amber-600 font-semibold">該工作站無人值班，請從宿舍拖曳科學家過來值守！</span>' : '運行中。'}`);
+      }
+    }
+
+    // 地圖內人員點擊交互
+    window.handleTalentMapClick = function(e, talentId) {
+      e.stopPropagation(); 
+      const t = talents.find(x => x.id === talentId);
+      if (!t) return;
+
+      if (currentMode === 'fire') {
+        for (let s = 0; s < SLOTS_COUNT; s++) {
+          for (let r = 0; r < board[s].length; r++) {
+            board[s][r].workers = board[s][r].workers.filter(id => id !== t.id);
+          }
+        }
+        talents = talents.filter(x => x.id !== t.id);
+        renderBoard();
+        aiSpeak(`人事令：已正式裁撤並解除對 [${t.name}] 的復育合約。`);
+      } else {
+        aiSpeak(`【科學家：${t.name}】<br>當前值守崗位中。您可以將其按住拖曳前往其他宿舍 (🏠) 休憩，或調遣至其他工作站！`);
+      }
+    };
+
+    // ==========================================
+    // 🚀 科技樹系統 - 全新動態連線與樹狀佈局 UI
+    // ==========================================
+    function toggleResearchModal(show) {
+      const modal = document.getElementById('modalResearch');
+      if (show) { 
+        modal.classList.remove('hidden'); 
+        modal.classList.add('flex'); 
+        updateUI(); 
+        renderTechTree(); 
+        setTimeout(initTechTreeZoom, 50); 
+      } 
+      else { 
+        modal.classList.add('hidden'); 
+        modal.classList.remove('flex');
+      }
+    }
+
+    function renderTechTree() {
+      const canvas = document.getElementById('techTreeCanvas');
+      if(!canvas) return;
+      
+      Array.from(canvas.children).forEach(child => {
+        if (child.tagName.toLowerCase() !== 'svg') {
+          canvas.removeChild(child);
+        }
+      });
+
+      techNodes.forEach(tech => {
+        canvas.appendChild(createTechCard(tech));
+      });
+
+      setTimeout(drawTechLines, 50);
+    }
+
+    function createTechCard(tech) {
+      const div = document.createElement('div');
+      
+      const isPlant = tech.id.includes('plant');
+      
+      let tBg, tBorder, tText;
+      if (isPlant) {
+        tBg = 'bg-emerald-50'; tBorder = 'border-emerald-300'; tText = 'text-emerald-700';
+      } else {
+        tBg = 'bg-sky-50'; tBorder = 'border-sky-300'; tText = 'text-sky-700';
+      }
+
+      div.id = `tech_${tech.id}`;
+      div.style.gridColumn = tech.col;
+      div.style.gridRow = tech.row;
+      
+      div.className = `p-4 rounded-xl border-2 flex flex-col justify-between transition-all duration-300 relative z-10 ${
+        tech.unlocked 
+          ? `${tBg} ${tBorder} shadow-md` 
+          : 'bg-white border-slate-200 hover:border-slate-300 shadow-sm'
+      }`;
+      
+      let btnHtml = '';
+      let reqTextHtml = '';
+
+      let prereqMet = true;
+      if (tech.req && tech.req.length > 0) {
+         const missingReqs = tech.req.filter(rId => {
+            const rNode = techNodes.find(t => t.id === rId);
+            return rNode && !rNode.unlocked;
+         });
+         if (missingReqs.length > 0) {
+             prereqMet = false;
+             const reqNames = missingReqs.map(rId => techNodes.find(t => t.id === rId).name).join('、');
+             reqTextHtml = `<div class="text-[10px] text-red-500 font-bold mb-2 bg-red-50 px-2 py-1.5 rounded border border-red-200">⚠️ 需先解鎖前置: <br>${reqNames}</div>`;
+         }
+      }
+
+      let costStr = [];
+      if (tech.cost.funding > 0) costStr.push(`${tech.cost.funding}💰`);
+      if (tech.cost.food > 0) costStr.push(`${tech.cost.food}🌾`);
+      if (tech.cost.inspiration > 0) costStr.push(`${tech.cost.inspiration}💡`);
+      if (tech.cost.gene > 0) costStr.push(`${tech.cost.gene}🧬`);
+      let costDisplay = costStr.join(' / ');
+
+      if (tech.unlocked) {
+        btnHtml = `<span class="text-xs ${tText} font-bold tracking-widest px-3 py-2 rounded-md bg-white border ${tBorder} shadow-sm flex items-center justify-center gap-2"><span>✨</span> 已研發項目</span>`;
+      } else {
+        const canAfford = resources.funding >= (tech.cost.funding || 0) &&
+                          resources.food >= (tech.cost.food || 0) &&
+                          resources.inspiration >= (tech.cost.inspiration || 0) &&
+                          resources.gene >= (tech.cost.gene || 0);
+
+        const disabled = !canAfford || !prereqMet;
+        let btnClasses = `w-full py-2.5 rounded-lg text-xs font-bold transition-all tracking-widest `;
+        if (disabled) {
+            btnClasses += `bg-slate-100 text-slate-400 cursor-not-allowed border border-slate-200`;
+        } else {
+            btnClasses += `btn-game border-purple-400 text-purple-700 hover:bg-purple-50 active:scale-95 shadow-sm`;
+        }
+
+        btnHtml = `
+          <div class="text-center text-[10px] font-mono font-bold text-slate-500 mb-1.5">${costDisplay}</div>
+          <button onclick="buyTech('${tech.id}')" class="${btnClasses}" ${disabled ? 'disabled' : ''}>
+            🚀 啟動研發
+          </button>
+        `;
+      }
+
+      let titleStyle = 'text-slate-800';
+
+      div.innerHTML = `
+        <div class="mb-3 relative z-10 pointer-events-none">
+          <h5 class="text-sm font-black tracking-wider flex items-center justify-between ${titleStyle}">
+             <span>${tech.name}</span>
+          </h5>
+          <p class="text-[11px] text-slate-500 mt-1.5 leading-relaxed">${tech.desc}</p>
+        </div>
+        <div class="flex flex-col mt-auto relative z-10 border-t border-slate-100 pt-2">
+          ${reqTextHtml}
+          <div>
+            ${btnHtml}
+          </div>
+        </div>
+      `;
+      return div;
+    }
+
+    // 🚀 Draw SVG connecting lines dynamically 
+    function drawTechLines() {
+      const svg = document.getElementById('techTreeLines');
+      const canvas = document.getElementById('techTreeCanvas');
+      if(!svg || !canvas) return;
+      
+      const width = canvas.scrollWidth || 3160;
+      const height = canvas.scrollHeight || 1000;
+      
+      svg.setAttribute('width', width);
+      svg.setAttribute('height', height);
+      svg.style.width = width + 'px';
+      svg.style.height = height + 'px';
+      svg.innerHTML = '';
+      
+      techNodes.forEach(node => {
+        if (!node.req || node.req.length === 0) return;
+        
+        const childEl = document.getElementById(`tech_${node.id}`);
+        if (!childEl) return;
+        
+        const childX = childEl.offsetLeft;
+        const childY = childEl.offsetTop + childEl.offsetHeight / 2;
+
+        node.req.forEach(reqId => {
+          const parentEl = document.getElementById(`tech_${reqId}`);
+          if (!parentEl) return;
+          
+          const parentX = parentEl.offsetLeft + parentEl.offsetWidth;
+          const parentY = parentEl.offsetTop + parentEl.offsetHeight / 2;
+
+          const isUnlocked = node.unlocked;
+          const strokeColor = isUnlocked ? '#10b981' : '#cbd5e1'; 
+          const strokeWidth = isUnlocked ? 5 : 3;
+
+          const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+          
+          const cp1X = parentX + 80;
+          const cp1Y = parentY;
+          const cp2X = childX - 80;
+          const cp2Y = childY;
+
+          const d = `M ${parentX} ${parentY} C ${cp1X} ${cp1Y}, ${cp2X} ${cp2Y}, ${childX} ${childY}`;
+          
+          path.setAttribute('d', d);
+          path.setAttribute('stroke', strokeColor);
+          path.setAttribute('stroke-width', strokeWidth);
+          path.setAttribute('fill', 'none');
+          if (!isUnlocked) {
+            path.setAttribute('stroke-dasharray', '8 6');
+          }
+          svg.appendChild(path);
+        });
+      });
+    }
+
+    window.addEventListener('resize', () => {
+      if (!document.getElementById('modalResearch').classList.contains('hidden')) {
+        drawTechLines();
+      }
+    });
+
+    window.buyTech = function(techId) {
+      const tech = techNodes.find(t => t.id === techId);
+      if (tech && !tech.unlocked) {
+        
+        if (tech.req && tech.req.length > 0) {
+           const missing = tech.req.some(reqId => {
+               const rNode = techNodes.find(t => t.id === reqId);
+               return rNode && !rNode.unlocked;
+           });
+           if (missing) return;
+        }
+
+        const canAfford = resources.funding >= (tech.cost.funding || 0) &&
+                          resources.food >= (tech.cost.food || 0) &&
+                          resources.inspiration >= (tech.cost.inspiration || 0) &&
+                          resources.gene >= (tech.cost.gene || 0);
+
+        if (canAfford) {
+          resources.funding -= (tech.cost.funding || 0);
+          resources.food -= (tech.cost.food || 0);
+          resources.inspiration -= (tech.cost.inspiration || 0);
+          resources.gene -= (tech.cost.gene || 0);
+          
+          tech.unlocked = true;
+          
+          if (tech.unlockRoom) {
+            const bBtn = document.getElementById(`btnBuild_${tech.unlockRoom}`);
+            if (bBtn) bBtn.classList.remove('btn-disabled');
+          }
+
+          if (techId === 'tech_speed') {
+            const btnSpeed5 = document.getElementById('btnSpeed5');
+            btnSpeed5.classList.remove('hidden');
+            aiSpeak("⚡ <b>【重大科創突破】</b> 恭喜指揮官！我們成功研發【時空運算協定】，解鎖 <b>5倍速</b> 時空加速！請點擊上方 ⚡ 5x 按鈕，大幅推進時間！");
+          }
+
+          updateUI(); 
+          renderTechTree(); 
+          renderBoard();
+          
+          if (techId !== 'tech_speed') {
+             aiSpeak(`【科研大進展】解鎖成功：${tech.name}！我們的技術實力再次攀升！`);
+          }
+
+          if (techId === 'tech_final') {
+             gameWon = true;
+             toggleResearchModal(false);
+             prepareEndingScript(true);
+             startVnStory('ending');
+             storyStatus.ending = true;
+          }
+
+        } else {
+          aiSpeak('<span class="text-red-500 font-bold">資源庫存不足，無法啟動此項工程研究！</span>');
+        }
+      }
+    };
+
+    function initTechTreeZoom() {
+      const scrollArea = document.getElementById('techScrollArea');
+      const canvas = document.getElementById('techTreeCanvas');
+      if (!scrollArea || !canvas) return;
+      
+      let targetWidth = canvas.offsetWidth;
+      let targetHeight = canvas.offsetHeight;
+      if (!targetWidth || targetWidth < 500) targetWidth = 3160;
+      if (!targetHeight || targetHeight < 300) targetHeight = 1000;
+      
+      let areaWidth = scrollArea.clientWidth || window.innerWidth;
+      let areaHeight = scrollArea.clientHeight || window.innerHeight;
+      if (!areaWidth) areaWidth = 1024;
+      if (!areaHeight) areaHeight = 768;
+      
+      const scaleX = areaWidth / targetWidth;
+      const scaleY = areaHeight / targetHeight;
+      
+      let newScale = Math.min(scaleX, scaleY) * 0.95;
+      if (isNaN(newScale) || !isFinite(newScale)) newScale = 1;
+      
+      techCam.scale = Math.max(0.35, Math.min(1.2, newScale)); 
+      
+      techCam.panX = (areaWidth - targetWidth * techCam.scale) / 2;
+      techCam.panY = (areaHeight - targetHeight * techCam.scale) / 2;
+      
+      if (isNaN(techCam.panX) || !isFinite(techCam.panX)) techCam.panX = 0;
+      if (isNaN(techCam.panY) || !isFinite(techCam.panY)) techCam.panY = 0;
+
+      updateTechCam();
+      drawTechLines();
+    }
+
+    function clampTechCam() {
+      const scrollArea = document.getElementById('techScrollArea');
+      const canvas = document.getElementById('techTreeCanvas');
+      if (!scrollArea || !canvas) return;
+      
+      const areaW = scrollArea.clientWidth;
+      const areaH = scrollArea.clientHeight;
+      const canvasW = canvas.offsetWidth * techCam.scale;
+      const canvasH = canvas.offsetHeight * techCam.scale;
+      
+      const marginX = areaW * 0.8; 
+      const marginY = areaH * 0.8;
+      
+      techCam.panX = Math.min(marginX, Math.max(techCam.panX, areaW - canvasW - marginX));
+      techCam.panY = Math.min(marginY, Math.max(techCam.panY, areaH - canvasH - marginY));
+      
+      if(isNaN(techCam.panX)) techCam.panX = 0;
+      if(isNaN(techCam.panY)) techCam.panY = 0;
+      if(isNaN(techCam.scale) || techCam.scale <= 0) techCam.scale = 1;
+    }
+
+    function updateTechCam() {
+      const canvas = document.getElementById('techTreeCanvas');
+      if (canvas) {
+        clampTechCam();
+        canvas.style.transform = `translate(${techCam.panX}px, ${techCam.panY}px) scale(${techCam.scale})`;
+      }
+    }
+
+    // ==========================================
+    // 🚀 重新開始的自訂防誤觸邏輯
+    // ==========================================
+    window.restartGame = function() {
+      document.getElementById('modalHomeConfirm').classList.add('hidden');
+      document.getElementById('modalHomeConfirm').classList.remove('flex');
+      document.getElementById('gameUI').classList.add('hidden');
+      document.getElementById('modalEndGame').classList.add('hidden');
+      document.getElementById('startScreen').classList.remove('hidden');
+      document.getElementById('vnOverlay').classList.add('hidden');
+
+      gameWon = false;
+      currentMode = 'idle';
+      selectedBuildType = null;
+      selectedTalentId = null;
+      gameSpeed = 1; 
+      currentMonth = 1;
+      monthTickProgress = 0; 
+      recruitsThisMonth = 0;
+      currentCandidates = []; 
+      talents = [];
+      talentCounter = 1;
+      resources = { funding: 800, food: 300, inspiration: 10, gene: 0 };
+      storyStatus = { prologue: false, chapter1: false, chapter2: false, chapter3: false, ending: false };
+      
+      board = Array(SLOTS_COUNT).fill(null).map(() => []);
+      techNodes.forEach(t => t.unlocked = false);
+      
+      const btnSpeed5 = document.getElementById('btnSpeed5');
+      if(btnSpeed5) btnSpeed5.classList.add('hidden');
+      
+      document.getElementById('btnBuild_water').classList.add('btn-disabled');
+      document.getElementById('btnBuild_eco').classList.add('btn-disabled');
+      
+      updateUI();
+      document.getElementById('gameMonth').textContent = '01 / 15';
+      document.getElementById('monthProgress').style.width = '0%';
+      document.getElementById('modeIndicator').innerHTML = `<span class="tracking-widest uppercase text-xs">指揮端已部署</span><span class="text-[10px] text-slate-400 font-normal mt-1">選取上方建築，或開啟右方招募面板調配。</span>`;
+      
+      updateEnvironmentVars();
+    };
+
+
+    // ==========================================
+    // 遊戲戰略結算
+    // ==========================================
+    function endGame(vowName = "", vowPath = "") {
+      setSpeed(0);
+      const modal = document.getElementById('modalEndGame');
+      modal.classList.remove('hidden');
+
+      if (gameWon) {
+        // 🌟 成功結局
+        document.getElementById('endGameTitle').textContent = "🏆 完美大結局：禾下乘涼，豐收盛世！";
+        document.getElementById('endGameTitle').className = "text-2xl font-black tracking-widest mb-4 text-green-700";
+        document.getElementById('endGameBorder').style.borderColor = "#059669";
+        document.getElementById('endGameDesc').innerHTML = `
+          <strong>【創穗計劃．終極勝利證書】</strong><br><br>
+          新一代愛國創科接班人：<span class="text-emerald-700 font-extrabold text-lg">${vowName}</span><br>
+          光榮立志方向：<span class="text-purple-700 font-black text-md">${vowPath}</span><br><br>
+          在您力挽狂瀾的英明領導下，我們在絕境中成功解鎖了【終極三系配套】！<br>
+          全球飢荒警報解除，綠色的生機重新覆蓋了滿目瘡痍的大地！無數同胞因您的決策而獲救！<br>
+          袁隆平院士默默耕耘、自立自強的愛國與創科精神，已由您在最黑暗的時代裡，完美傳承並發揚光大！
+        `;
+      } else {
+        // 🥀 失敗結局
+        document.getElementById('endGameTitle').textContent = "🥀 遺憾結局：荒漠迷途，堅守不渝";
+        document.getElementById('endGameTitle').className = "text-2xl font-black tracking-widest mb-4 text-red-600";
+        document.getElementById('endGameBorder').style.borderColor = "#dc2626";
+        document.getElementById('endGameDesc').innerHTML = `
+          <strong>【復育失敗特別通報】</strong><br><br>
+          15 個月的緊急期限已宣告到期，最後的避難所防線崩潰。<br>
+          極端的飢荒與沙暴吞噬了我們最後的希望，未能及時解鎖拯救世界的【終極三系配套】。<br><br>
+          但是，科學的征途必將踏過無數荊棘！每一次失敗，都讓我們更深刻體會到袁隆平院士當年面臨國際質疑與幾十萬次失敗配種時的艱辛。
+          永不氣餒！請重新規劃您的 4 種資源與人力，再次啟動研究，同胞與國家的命運，期待您來挽救！
+        `;
+      }
+    }
+
+    // ==========================================
+    // 系統設置與 AI 面板控制
+    // ==========================================
+    window.toggleRobotVisible = function() {
+      const p = document.getElementById('robotPanel');
+      const btn = document.getElementById('btnShowRobot');
+      if (p.classList.contains('hidden')) {
+        p.classList.remove('hidden'); 
+        btn.classList.add('hidden');
+      } else {
+        p.classList.add('hidden'); 
+        btn.classList.remove('hidden');
+      }
+    };
+    
+    window.toggleSettingsModal = function(show) {
+      const modal = document.getElementById('modalSettings');
+      if (show) modal.classList.remove('hidden'); else modal.classList.add('hidden');
+    };
+    window.toggleExitModal = function(show) {
+      const modal = document.getElementById('modalExit');
+      if (show) modal.classList.remove('hidden'); else modal.classList.add('hidden');
+    };
+
+    // ==========================================
+    // 攝像機防衝突與動態平移限制 (Dynamic Camera Bounds)
+    // ==========================================
+    const camContainer = document.getElementById('camContainer');
+    const camTarget = document.getElementById('camTarget');
+    let mainCam = { panX: 0, panY: 0, scale: 1, isDragging: false, startX: 0, startY: 0 };
+
+    function updateMainCam() { 
+      camTarget.style.transform = `scale(${mainCam.scale}) translate(${mainCam.panX}px, ${mainCam.panY}px)`; 
+      
+      // 應用相機視差滾動效果 (Parallax) 給背景圖層
+      const l0 = document.getElementById('plxLayer0'); // 雲
+      const mFar = document.getElementById('plxMountainFar'); // 遠山
+      const mNear = document.getElementById('plxMountainNear'); // 近山
+      
+      if(l0) l0.style.transform = `scale(${1 + (mainCam.scale - 1) * 0.05}) translate(${mainCam.panX * 0.05}px, ${mainCam.panY * 0.02}px)`;
+      
+      // 山脈已置於 camTarget 內，因此 Y 軸與縮放自動貼合地面！
+      // 給予反向的 X 軸位移以產生水平視差效果
+      if(mFar) mFar.style.transform = `translateX(${-mainCam.panX * 0.5}px)`;
+      if(mNear) mNear.style.transform = `translateX(${-mainCam.panX * 0.25}px)`;
+    }
+
+    camContainer.addEventListener('mousedown', (e) => {
+      const isInteractive = e.target.closest('button') || e.target.closest('.room-base') || e.target.closest('.slot-empty-indicator') || e.target.closest('[draggable="true"]') || e.target.closest('.game-panel') || e.target.closest('.speech-bubble') || e.target.closest('#vnOverlay') || e.target.closest('#vowModal') || e.target.closest('#modalResearch') || e.target.closest('#modalHomeConfirm') || e.target.closest('#tutorialOverlay');
+      if (isInteractive) return;
+      if (e.button === 2) return; 
+
+      mainCam.isDragging = true;
+      mainCam.startX = e.clientX - mainCam.panX * mainCam.scale;
+      mainCam.startY = e.clientY - mainCam.panY * mainCam.scale;
+    });
+
+    window.addEventListener('mousemove', (e) => {
+      // 確保科技樹畫面支援拖曳功能
+      if (techCam.isDragging) {
+        techCam.panX = e.clientX - techCam.startX;
+        techCam.panY = e.clientY - techCam.startY;
+        updateTechCam();
+        return;
+      }
+
+      if (!mainCam.isDragging) return;
+      mainCam.panX = (e.clientX - mainCam.startX) / mainCam.scale;
+      mainCam.panY = (e.clientY - mainCam.startY) / mainCam.scale;
+      
+      const boardEl = document.getElementById('gameBoard');
+      let maxPanX = 0;
+      let maxPanY = 0;
+
+      if (boardEl) {
+          const mapW = boardEl.offsetWidth + 100; 
+          const viewW = window.innerWidth;
+          if (mapW * mainCam.scale > viewW) {
+              maxPanX = ((mapW * mainCam.scale - viewW) / 2) / mainCam.scale;
+          }
+          if (mainCam.scale > 1.0) {
+              maxPanY = 150 * (mainCam.scale - 1.0); 
+          }
+      }
+      
+      mainCam.panX = Math.max(-maxPanX, Math.min(maxPanX, mainCam.panX)); 
+      mainCam.panY = Math.max(-maxPanY, Math.min(maxPanY, mainCam.panY));
+      updateMainCam();
+    });
+
+    window.addEventListener('mouseup', () => { 
+      mainCam.isDragging = false; 
+      techCam.isDragging = false;
+    });
+    
+    camContainer.addEventListener('wheel', (e) => {
+      e.preventDefault();
+      const zoomSpeed = 0.05;
+      mainCam.scale += e.deltaY < 0 ? zoomSpeed : -zoomSpeed;
+      mainCam.scale = Math.max(1.0, Math.min(1.6, mainCam.scale));
+      
+      if (mainCam.scale <= 1.0) {
+          mainCam.panY = 0; 
+      }
+      
+      const boardEl = document.getElementById('gameBoard');
+      if (boardEl) {
+          const mapW = boardEl.offsetWidth + 100;
+          const viewW = window.innerWidth;
+          let maxPanX = 0;
+          let maxPanY = 0;
+          
+          if (mapW * mainCam.scale > viewW) {
+              maxPanX = ((mapW * mainCam.scale - viewW) / 2) / mainCam.scale;
+          }
+          if (mainCam.scale > 1.0) {
+              maxPanY = 150 * (mainCam.scale - 1.0);
+          }
+          
+          mainCam.panX = Math.max(-maxPanX, Math.min(maxPanX, mainCam.panX)); 
+          mainCam.panY = Math.max(-maxPanY, Math.min(maxPanY, mainCam.panY));
+      }
+      updateMainCam();
+    });
+
+    window.addEventListener('contextmenu', (e) => { 
+      e.preventDefault(); 
+      if (currentMode !== 'idle') cancelMode(); 
+    });
+    window.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') cancelMode();
+    });
+
+    window.setSpeed = setSpeed;
+    window.setMode = setMode;
+    window.cancelMode = cancelMode;
+    window.handleSlotClick = handleSlotClick;
+    window.handleRoomClick = handleRoomClick;
+    window.reclaimTalent = reclaimTalent;
+    window.buyTalent = buyTalent;
+
+    // ==========================================
+    // 背景動態生態粒子系統 (落葉與沙塵) + 視差效果
+    // ==========================================
+    const canvas = document.getElementById('bgCanvas');
+    const ctx = canvas.getContext('2d');
+    let dustParticles = [];
+    let leafParticles = [];
+    
+    function resizeCanvas() { canvas.width = window.innerWidth; canvas.height = window.innerHeight; }
+    window.addEventListener('resize', resizeCanvas); resizeCanvas();
+
+    function adjustParticles(targetCount) {
+      // 處理沙塵
+      if (dustParticles.length < targetCount) {
+        const diff = targetCount - dustParticles.length;
+        for (let i = 0; i < diff; i++) {
+          dustParticles.push({ 
+            x: Math.random() * canvas.width, 
+            y: Math.random() * canvas.height, 
+            s: Math.random() * 1.5 + 0.5, 
+            speedY: -(Math.random() * 0.4 + 0.1),
+            speedX: (Math.random() - 0.5) * 0.15
+          });
+        }
+      } else if (dustParticles.length > targetCount) {
+        dustParticles = dustParticles.slice(0, targetCount);
+      }
+
+      // 處理動態落葉 (進一步降低數量，僅約五分之一的密度，畫面更乾淨)
+      let leafCount = Math.floor(targetCount / 5);
+      if (leafParticles.length < leafCount) {
+         const diff = leafCount - leafParticles.length;
+         for (let i = 0; i < diff; i++) {
+           leafParticles.push({
+             x: Math.random() * canvas.width,
+             y: Math.random() * canvas.height,
+             s: Math.random() * 3 + 2, // 縮小葉片尺寸更精緻
+             speedY: Math.random() * 1.5 + 1.0, // 掉落速度
+             speedX: (Math.random() - 0.5) * 1.0,
+             rot: Math.random() * Math.PI * 2, 
+             rotSpeed: (Math.random() - 0.5) * 0.05,
+             swayFreq: Math.random() * 0.05 + 0.01, // 搖擺頻率
+             swayAmp: Math.random() * 2.0 + 1.0, // 搖擺幅度
+             swayOffset: Math.random() * Math.PI * 2,
+             colorVari: Math.random() 
+           });
+         }
+      } else if (leafParticles.length > leafCount) {
+         leafParticles = leafParticles.slice(0, leafCount);
+      }
+    }
+    
+    function animateBg() {
+      if (gameSpeed > 0) {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        
+        // 進度影響顏色
+        const p = Math.min(1.0, currentMonth / 15);
+        const speedMult = gameSpeed === 5 ? 3.0 : gameSpeed === 2 ? 1.8 : 1.0;
+        const timeSec = Date.now() * 0.001;
+        
+        // 全域環境風力
+        const globalWind = Math.sin(timeSec * 0.5) * 1.5 + Math.cos(timeSec * 0.2) * 0.5;
+        
+        const mod = (n, m) => ((n % m) + m) % m;
+        
+        // 1. 繪製沙塵 (Dust Particles)
+        ctx.fillStyle = `rgba(255, 255, 255, 0.4)`;
+        dustParticles.forEach(pt => {
+          pt.y += pt.speedY * speedMult;
+          pt.x += (pt.speedX + globalWind * 0.2) * speedMult;
+          
+          let drawX = mod(pt.x + mainCam.panX * 0.1, canvas.width);
+          let drawY = mod(pt.y + mainCam.panY * 0.1, canvas.height);
+          
+          ctx.beginPath();
+          ctx.arc(drawX, drawY, pt.s, 0, Math.PI * 2);
+          ctx.fill();
+        });
+
+        // 2. 繪製落葉 (Leaf Particles) - 直接使用屏幕座標保證動畫穩定自然
+        leafParticles.forEach(leaf => {
+          leaf.y += leaf.speedY * speedMult;
+          
+          // 個體搖擺 + 基礎速度 + 全局風力
+          const swayX = Math.sin(timeSec * leaf.swayFreq * 20 + leaf.swayOffset) * leaf.swayAmp;
+          leaf.x += (swayX + leaf.speedX + globalWind) * speedMult;
+          leaf.rot += leaf.rotSpeed * speedMult;
+
+          // 循環邊界，使其連綿不絕
+          if (leaf.y > canvas.height + 50) { leaf.y = -50; leaf.x = Math.random() * canvas.width; }
+          if (leaf.x > canvas.width + 50) leaf.x = -50;
+          if (leaf.x < -50) leaf.x = canvas.width + 50;
+
+          ctx.save();
+          ctx.translate(leaf.x, leaf.y);
+          ctx.rotate(leaf.rot);
+          
+          // 3D 翻轉效果
+          ctx.scale(Math.sin(timeSec * leaf.swayFreq * 40 + leaf.swayOffset), 1); 
+
+          // 根據環境進度改變落葉顏色
+          if (p > 0.5) {
+             const gVal = Math.floor(160 + leaf.colorVari * 60); 
+             ctx.fillStyle = `rgba(34, ${gVal}, 74, 0.95)`; 
+          } else {
+             const rVal = Math.floor(210 + leaf.colorVari * 45); 
+             const gVal = Math.floor(80 + leaf.colorVari * 90);  
+             ctx.fillStyle = `rgba(${rVal}, ${gVal}, 20, 0.95)`;
+          }
+
+          // 繪製葉片形狀
+          ctx.beginPath();
+          ctx.moveTo(leaf.s, 0);
+          ctx.quadraticCurveTo(leaf.s * 0.4, -leaf.s * 0.8, -leaf.s, 0);
+          ctx.quadraticCurveTo(leaf.s * 0.4, leaf.s * 0.8, leaf.s, 0);
+          ctx.fill();
+          ctx.restore();
+        });
+
+      }
+      requestAnimationFrame(animateBg);
+    }
+    
+    // 初始化粒子並開始動畫
+    adjustParticles(60);
+    animateBg();
+  </script>
+</body>
+</html>

@@ -1731,6 +1731,7 @@
     // 添加 lifetime 跟蹤總共獲得的資源量，方便進行資源囤積大亨成就
     let resources = { funding: 800, food: 300, inspiration: 10, gene: 0, lifetime: 1110 };
 
+    let isGameStarted = false; // 新增控制標記，防止在未開始遊戲時自動推進時間
     let gameSpeed = 1; 
     let currentMonth = 1;
     let monthTickProgress = 0; 
@@ -1797,7 +1798,10 @@
           startVnStory('prologue');
           storyStatus['prologue'] = true;
           
-          setInterval(gameStep, TICK_INTERVAL);
+          isGameStarted = true;
+          if (!window.gameLoopInterval) {
+            window.gameLoopInterval = setInterval(gameStep, TICK_INTERVAL);
+          }
         });
       }
 
@@ -1922,7 +1926,7 @@
 
     let accumulativeSec = 0;
     function gameStep() {
-      if (gameSpeed === 0 || gameWon) return; 
+      if (!isGameStarted || gameSpeed === 0 || gameWon) return; 
 
       let stepSpeed = gameSpeed;
       monthTickProgress += (100 / 1800) * stepSpeed; 
@@ -2872,6 +2876,7 @@
     // 🚀 重新開始的自訂防誤觸邏輯
     // ==========================================
     window.restartGame = function() {
+      isGameStarted = false; // 停止背景時間流動
       document.getElementById('modalHomeConfirm').classList.add('hidden');
       document.getElementById('modalHomeConfirm').classList.remove('flex');
       document.getElementById('gameUI').classList.add('hidden');

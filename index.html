@@ -511,7 +511,7 @@
           公元2077年，地球大氣層遭受不可逆破壞，全球地表沙漠化高達98%，人類面臨史無前例的生存絕境與飢荒危機。在這生死存亡的倒數時刻，為了挽救同胞與我們的蔚藍家園，您必須繼承「雜交水稻之父」袁隆平院士的科學奮鬥精神。您作為「創穗計劃」的總指揮 <strong>「Boss」</strong>，將帶領您的科研團隊在絕境中尋找奇蹟。
         </p>
         <p class="text-green-700 text-xs leading-relaxed font-medium">
-          <strong>【極限任務】</strong>：地下避難所的物資僅能維持最後 <strong>15 個月</strong>！您必須擴建龐大的科研設施，獲取 4 種關鍵資源。帶領團隊深入全息科技樹，解鎖終極科技節點 <span class="font-bold text-green-800">「終極三系配套」</span>，這是拯救地球溫飽危機的唯一希望！
+          <strong>【極限任務】</strong>：地下避難所的物資僅能維持最後 <strong>20 個月</strong>！您必須擴建龐大的科研設施，獲取 4 種關鍵資源。帶領團隊深入全息科技樹，解鎖終極科技節點 <span class="font-bold text-green-800">「終極三系配套」</span>，這是拯救地球溫飽危機的唯一希望！
         </p>
       </div>
       <div class="flex space-x-3 w-full max-w-xl">
@@ -522,7 +522,7 @@
         <button id="btnExit" class="btn-game btn-danger px-6 py-3 text-lg font-bold rounded-sm">放棄任務</button>
       </div>
       <div class="mt-8 text-slate-500 font-mono-num text-[11px] tracking-wider text-left font-medium">
-        地球聯邦復育署特派指令科 - 首席指揮控制台 v6.1.1 ONLINE
+        地球聯邦復育署特派指令科 - 首席指揮控制台 v6.2.1 ONLINE
       </div>
     </div>
   </div>
@@ -534,7 +534,27 @@
     <div id="tutorialDialog" class="absolute left-1/2 transform -translate-x-1/2 w-[400px] bg-slate-900/95 border-2 border-emerald-500 rounded-2xl p-6 shadow-[0_10px_40px_rgba(0,0,0,0.8)] transition-all duration-500 ease-in-out flex flex-col gap-4">
       <div class="flex items-start gap-4">
         <div class="w-16 h-16 shrink-0 bg-emerald-950 rounded-full border border-emerald-500/50 flex items-center justify-center shadow-[0_0_15px_rgba(16,185,129,0.3)]">
-          <span class="text-3xl">🤖</span>
+          <svg viewBox="0 0 100 100" class="w-14 h-14 drop-shadow-[0_4px_10px_rgba(0,0,0,0.2)]">
+            <circle cx="50" cy="50" r="45" fill="rgba(16, 185, 129, 0.05)"/>
+            <path d="M 28 35 Q 16 15 32 23 Z" fill="url(#chassisGrad)" stroke="#cbd5e1" stroke-width="1.5" />
+            <path d="M 72 35 Q 84 15 68 23 Z" fill="url(#chassisGrad)" stroke="#cbd5e1" stroke-width="1.5" />
+            <ellipse cx="50" cy="48" r="32" rx="34" ry="26" fill="url(#chassisGrad)" stroke="#cbd5e1" stroke-width="2" />
+            <ellipse cx="50" cy="49" r="28" rx="30" ry="21" fill="#080c14" stroke="#475569" stroke-width="1" />
+            <circle cx="39" cy="48" r="6" fill="#10b981" filter="url(#subtleGlow)" />
+            <circle cx="39" cy="48" r="4" fill="#34d399" />
+            <circle cx="37" cy="45" r="1.5" fill="#ffffff" />
+            <circle cx="61" cy="48" r="6" fill="#10b981" filter="url(#subtleGlow)" />
+            <circle cx="61" cy="48" r="4" fill="#34d399" />
+            <circle cx="59" cy="45" r="1.5" fill="#ffffff" />
+            <circle cx="26" cy="54" r="3" fill="#ef4444" opacity="0.5" filter="url(#subtleGlow)" />
+            <circle cx="74" cy="54" r="3" fill="#ef4444" opacity="0.5" filter="url(#subtleGlow)" />
+            <path d="M 47 54 Q 50 58 53 54" fill="none" stroke="#34d399" stroke-width="1.5" stroke-linecap="round" />
+            <path d="M 50 22 Q 50 8 51 6" fill="none" stroke="#475569" stroke-width="2" />
+            <path d="M 51 6 Q 44 2 46 5 Z" fill="#34d399" />
+            <path d="M 51 6 Q 58 2 56 5 Z" fill="#34d399" />
+            <path d="M 40 73 L 60 70 L 50 84 Z" fill="url(#darkMetal)" stroke="#94a3b8" stroke-width="1" />
+            <ellipse cx="50" cy="85" rx="10" ry="3" fill="#10b981" filter="url(#subtleGlow)" opacity="0.7"/>
+          </svg>
         </div>
         <div class="flex-1">
           <h4 class="text-emerald-400 font-bold tracking-widest text-sm mb-2 border-b border-emerald-800/50 pb-1">SEED-01 指南</h4>
@@ -768,7 +788,7 @@
 
         <div id="uiMonthBox" class="bg-white/90 px-4 py-2 rounded border border-green-500/20 flex flex-col items-center min-w-[125px] shadow-sm">
           <span class="text-xs text-slate-500 uppercase tracking-widest font-sci-fi">Month</span>
-          <span id="gameMonth" class="text-xl font-black font-sci-fi text-green-700">01 / 15</span>
+          <span id="gameMonth" class="text-xl font-black font-sci-fi text-green-700">01 / 20</span>
           <div class="w-24 h-1.5 bg-slate-200 rounded-full mt-1.5 overflow-hidden">
             <div id="monthProgress" class="h-full bg-green-500 transition-all duration-100" style="width: 0%"></div>
           </div>
@@ -1063,9 +1083,9 @@
     // ==========================================
     const achievements = [
       // 第一行: 完結時限挑戰 (Finishing Time)
-      { id: 'time_15', row: 1, name: '絕境求生', desc: '在 15 個月時限內成功復育地球（完成遊戲）', unlocked: false, difficulty: '★☆☆' },
-      { id: 'time_13', row: 1, name: '神速復原', desc: '在極速的 13 個月內研發出終極配套', unlocked: false, difficulty: '★★☆' },
-      { id: 'time_10', row: 1, name: '科技奇蹟', desc: '在極限的 10 個月內重啟地表生態！', unlocked: false, difficulty: '★★★' },
+      { id: 'time_20', row: 1, name: '絕境求生', desc: '在 20 個月時限內成功復育地球（完成遊戲）', unlocked: false, difficulty: '★☆☆' },
+      { id: 'time_15', row: 1, name: '神速復原', desc: '在極速的 15 個月內研發出終極配套', unlocked: false, difficulty: '★★☆' },
+      { id: 'time_12', row: 1, name: '科技奇蹟', desc: '在極限的 12 個月內重啟地表生態！', unlocked: false, difficulty: '★★★' },
 
       // 第二行: 房間擴建挑戰 (Base Expansion)
       { id: 'room_6', row: 2, name: '初步擴建', desc: '基地擴充達 6 個科研艙室（不含總部）', unlocked: false, difficulty: '★☆☆' },
@@ -1383,7 +1403,7 @@
     // ==========================================
     const storyScripts = {
       prologue: [
-        { speaker: 'seed', name: 'SEED-01', text: '緊急報告！長官，地表沙塵暴指數已突破臨界點，地下避難所的儲備糧食僅剩最後 15 個月！人類文明正處於存亡邊緣！' },
+        { speaker: 'seed', name: 'SEED-01', text: '緊急報告！長官，地表沙塵暴指數已突破臨界點，地下避難所的儲備糧食僅剩最後 20 個月！人類文明正處於存亡邊緣！' },
         { speaker: 'player', name: '指揮官 (您)', text: '局勢已經如此危急... 無數同胞正在飢餓中掙扎，我們決不能坐以待斃。系統，還有任何備用方案嗎？' },
         { speaker: 'seed', name: 'SEED-01', text: '正在檢索國家最高機密檔案... 找到了一線生機！這是一段來自 20 世紀中葉的珍貴農業歷史記錄。那時的國家，也曾面臨嚴峻的溫飽考驗。' },
         { speaker: 'seed', name: 'SEED-01', text: '在那個艱難歲月裡，有一位偉大的科學家——袁隆平院士。他曾發願：「我做過一個夢，夢見水稻長得有高粱那麼高，穗子像掃把那麼長...」' },
@@ -1407,10 +1427,11 @@
       ],
       chapter3: [
         { speaker: 'seed', name: 'SEED-01', text: '奇蹟！長官，這是奇蹟！我們在廢墟邊緣找到了能適應當前劇毒土壤的突變基因雛形！' },
-        { speaker: 'player', name: '指揮官 (您)', text: '找到了... 我們終於抓住了命運的曙光！當年袁院士找到『野敗』後，做出了什麼決定？' },
-        { speaker: 'seed', name: 'SEED-01', text: '他沒有將其據為己有，而是將這個無比珍貴的材料無私地分享給了全國的科研單位！開啟了史無前例的『全國大協作』！' },
-        { speaker: 'player', name: '指揮官 (您)', text: '這就是中國科學家胸懷天下的愛國情操！在亡國滅種的危機前，沒有個人得失，只有國家的未來！' },
-        { speaker: 'player', name: '指揮官 (您)', text: '打通所有地底避難所的通訊頻道！毫無保留地共享我們的基因序列，讓全人類的智慧匯聚於此，迎接最後的決戰！' }
+        { speaker: 'player', name: '指揮官 (您)', text: '找到了... 我們終於抓住了命運的曙光！但光靠運氣還不夠——當年袁院士找到『野敗』後，靠的是什麼？' },
+        { speaker: 'seed', name: 'SEED-01', text: '是日復一日的精確實驗、反覆的雜交組合、嚴謹的數據記錄，以及最先進的細胞顯微觀察技術。沒有科技硬實力的支撐，再好的材料也只是荒野中的雜草。' },
+        { speaker: 'player', name: '指揮官 (您)', text: '說得對！在那個年代，袁院士憑藉一雙肉眼和簡陋的儀器，創造了舉世震驚的雜交水稻奇蹟。如今我們擁有更強大的基因測序儀、AI 模擬系統和自動化育種平台，沒有理由失敗！' },
+        { speaker: 'seed', name: 'SEED-01', text: '科技不僅是工具，更是人類對抗滅絕的唯一盾牌。每一次數據運算、每一組基因對比，都在為我們累積勝算。' },
+        { speaker: 'player', name: '指揮官 (您)', text: '我們必須傾盡所有資源，集中最尖端的科研力量。下令所有部門進入最高科研戰備狀態！封鎖所有備用能源給超級電腦，全力加速基因模擬與篩選進程。記住——*科學技術，才是我們最後的堡壘！*' }
       ],
       ending: [] // 結局對白動態生成
     };
@@ -1552,7 +1573,7 @@
     const tutorialSteps = [
       {
         target: 'uiMonthBox',
-        text: '長官，歡迎來到地球復育指揮終端！<br><br>我們的時間非常緊迫，您只有 <b class="text-emerald-400">15 個月</b> 的時間來拯救地球的溫飽危機。如果時限內未能完成目標，計劃就會宣告失敗！'
+        text: '長官，歡迎來到地球復育指揮終端！<br><br>我們的時間非常緊迫，您只有 <b class="text-emerald-400">20 個月</b> 的時間來拯救地球的溫飽危機。如果時限內未能完成目標，計劃就會宣告失敗！'
       },
       {
         target: 'btnOpenResearch',
@@ -1843,9 +1864,9 @@
       
       // 🏆 觸發時限成就判定
       if (gameWon) {
-        unlockAchievement('time_15');
-        if (currentMonth <= 13) unlockAchievement('time_13');
-        if (currentMonth <= 10) unlockAchievement('time_10');
+        unlockAchievement('time_20');
+        if (currentMonth <= 15) unlockAchievement('time_15');
+        if (currentMonth <= 12) unlockAchievement('time_12');
       }
 
       endGame(name, path);
@@ -1922,7 +1943,7 @@
       currentMonth++;
       
       // 20 個月為時間上限。若未完成終極目標即宣告失敗。
-      if (currentMonth > 15 && !gameWon) { 
+      if (currentMonth > 20 && !gameWon) { 
         prepareEndingScript(false);
         startVnStory('ending');
         storyStatus.ending = true;
@@ -1934,7 +1955,7 @@
       
       recruitsThisMonth = 0; 
       generateCandidates(); 
-      elGameMonth.textContent = (currentMonth < 10 ? '0' + currentMonth : currentMonth) + ' / 15';
+      elGameMonth.textContent = (currentMonth < 10 ? '0' + currentMonth : currentMonth) + ' / 20';
       
       // 🚀 檢查是否已經解鎖 5x
       const speedTech = techNodes.find(t => t.id === 'tech_speed');
@@ -1967,7 +1988,7 @@
       if (currentMonth === 1) { aiSpeak(`【第 1 個月】Boss，新團隊已集結。請先「招募人才」並拖曳他們至耕地艙 (🌾) 以累積研究糧草與靈感！`); } 
       else if (currentMonth === 5) { aiSpeak(`【第 5 個月】時間不等人！持續解鎖「全息科技樹」，我們需要大量的資金(💰)和糧食(🌾)。`); } 
       else if (currentMonth === 10) { aiSpeak(`【第 10 個月】您解鎖「基因生態艙」了嗎？那是獲取【罕見基因(🧬)】的關鍵途徑！`); } 
-      else if (currentMonth === 11) { aiSpeak(`【第 11 個月】距離 15 個月限期已近！請全力儲備 4 種資源，攻克樹底的【終極三系配套】！`); } 
+      else if (currentMonth === 16) { aiSpeak(`【第 16 個月】距離 20 個月限期已近！請全力儲備 4 種資源，攻克樹底的【終極三系配套】！`); } 
     }
 
     // ==========================================
@@ -2070,7 +2091,7 @@
 
     // 隨著遊戲時長進行大氣背景轉變
     function updateEnvironmentVars() {
-      const p = Math.min(1.0, currentMonth / 15);
+      const p = Math.min(1.0, currentMonth / 20);
       document.documentElement.style.setProperty('--env-progress', p);
       const bgGrad = document.getElementById('bgGradient');
       if (p > 0.5) {
@@ -2172,7 +2193,7 @@
       document.querySelectorAll('.btn-game').forEach(b => b.classList.remove('active-mode'));
       document.body.className = `text-slate-800 text-sm mode-${mode} speed-${gameSpeed}`;
       
-      const p = Math.min(1.0, currentMonth / 15);
+      const p = Math.min(1.0, currentMonth / 20);
       if (p > 0.5) document.body.classList.add('is-green');
 
       if (mode === 'build') {
@@ -2212,7 +2233,7 @@
       document.querySelectorAll('.btn-game').forEach(b => b.classList.remove('active-mode'));
       document.body.className = `text-slate-800 text-sm speed-${gameSpeed}`;
       
-      const p = Math.min(1.0, currentMonth / 15);
+      const p = Math.min(1.0, currentMonth / 20);
       if (p > 0.5) document.body.classList.add('is-green');
       
       elModeIndicator.innerHTML = `<span class="tracking-widest uppercase text-xs">指揮端已部署</span><span class="text-[10px] text-slate-500 font-normal mt-1">選取上方建築，或開啟右方招募面板調配。</span>`;
@@ -2859,7 +2880,7 @@
       document.getElementById('btnBuild_eco').classList.add('btn-disabled');
       
       updateUI();
-      document.getElementById('gameMonth').textContent = '01 / 15';
+      document.getElementById('gameMonth').textContent = '01 / 20';
       document.getElementById('monthProgress').style.width = '0%';
       document.getElementById('modeIndicator').innerHTML = `<span class="tracking-widest uppercase text-xs">指揮端已部署</span><span class="text-[10px] text-slate-400 font-normal mt-1">選取上方建築，或開啟右方招募面板調配。</span>`;
       
@@ -2893,7 +2914,7 @@
         document.getElementById('endGameBorder').style.borderColor = "#dc2626";
         document.getElementById('endGameDesc').innerHTML = `
           <strong>【復育失敗特別通報】</strong><br><br>
-          15 個月的緊急期限已宣告到期，最後的避難所防線崩潰。<br>
+          20 個月的緊急期限已宣告到期，最後的避難所防線崩潰。<br>
           極端的飢荒與沙暴吞噬了我們最後的希望，未能及時解鎖拯救世界的【終極三系配套】。<br><br>
           但是，科學的征途必將踏過無數荊棘！每一次失敗，都讓我們更深刻體會到袁隆平院士當年面臨國際質疑與幾十萬次失敗配種時的艱辛。
           永不氣餒！請重新規劃您的 4 種資源與人力，再次啟動研究，同胞與國家的命運，期待您來挽救！
@@ -3090,7 +3111,7 @@
       if (gameSpeed > 0) {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         
-        const p = Math.min(1.0, currentMonth / 15);
+        const p = Math.min(1.0, currentMonth / 20);
         const speedMult = gameSpeed === 5 ? 3.0 : gameSpeed === 2 ? 1.8 : 1.0;
         const timeSec = Date.now() * 0.001;
         

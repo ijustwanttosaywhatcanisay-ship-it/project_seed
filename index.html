@@ -620,6 +620,10 @@
           <label class="block text-slate-600 text-sm mb-2">背景環境動態密度</label>
           <input type="range" id="particleRange" min="10" max="150" value="60" class="w-full accent-green-700 bg-slate-200 rounded h-1.5">
         </div>
+        <div class="pt-4 border-t border-slate-200">
+          <label class="block text-red-600 font-bold text-sm mb-2">進階選項</label>
+          <button id="btnResetAch" onclick="resetAchievements()" class="w-full py-2 bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 rounded shadow-sm transition-all text-sm font-bold tracking-wider">⚠️ 清除所有成就紀錄</button>
+        </div>
       </div>
       <div class="mt-8 flex justify-end">
         <button onclick="toggleSettingsModal(false)" class="btn-game px-6 py-2 rounded text-sm">確認變更</button>
@@ -1098,14 +1102,14 @@
       { id: 'res_100k', row: 3, name: '資源壟斷', desc: '歷史累計獲得 100,000 總資源 (經費+糧食+靈感+基因)', unlocked: false, difficulty: '★★★' }
     ];
 
-    // 本地序列化存儲
+    // 本地序列化存儲 (升級至 v4 以強制覆寫舊版錯誤紀錄)
     function saveAchievements() {
       const savedData = achievements.map(a => ({ id: a.id, unlocked: a.unlocked }));
-      localStorage.setItem('project_seed_achievements_v3', JSON.stringify(savedData));
+      localStorage.setItem('project_seed_achievements_v4', JSON.stringify(savedData));
     }
 
     function loadAchievements() {
-      const saved = localStorage.getItem('project_seed_achievements_v3');
+      const saved = localStorage.getItem('project_seed_achievements_v4');
       if (saved) {
         try {
           const parsed = JSON.parse(saved);
@@ -1118,6 +1122,26 @@
         }
       }
     }
+
+    // 清除成就系統紀錄
+    window.resetAchievements = function() {
+      localStorage.removeItem('project_seed_achievements_v4');
+      achievements.forEach(a => a.unlocked = false);
+      
+      const btn = document.getElementById('btnResetAch');
+      if (btn) {
+        const originalText = btn.innerHTML;
+        btn.innerHTML = '✅ 成就紀錄已清除！';
+        btn.classList.add('bg-green-100', 'text-green-700', 'border-green-300');
+        btn.classList.remove('bg-red-50', 'text-red-600', 'border-red-200');
+        setTimeout(() => {
+          btn.innerHTML = originalText;
+          btn.classList.remove('bg-green-100', 'text-green-700', 'border-green-300');
+          btn.classList.add('bg-red-50', 'text-red-600', 'border-red-200');
+        }, 3000);
+      }
+      renderAchievementsList();
+    };
 
     // 觸發解鎖
     function unlockAchievement(id) {
